@@ -4,12 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#1D4ED8">
+    
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="application-name" content="Gestor Permisos">
+    
     <title>Gestor de Asuntos Propios</title>
-	<link rel="manifest" href="manifest.json">
-	<link rel="apple-touch-icon" href="icons/icon-192.png">
-	<link rel="icon" type="image/x-icon" href="icons/favicon.ico">
+    
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+    <link rel="icon" type="image/x-icon" href="./icons/favicon.ico">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -34,6 +39,7 @@
         .cell-local { background-color: #F3E8FF; cursor: not-allowed; } 
         .cell-prov { background-color: #FFEDD5; cursor: not-allowed; } 
         .cell-non-teaching { background-color: #FEF9C3; } 
+        .cell-unavailable { background-color: #D1D5DB; cursor: not-allowed; opacity: 0.9; }
         
         .cell-active { box-shadow: inset 0 0 0 1px #3B82F6; }
 
@@ -182,12 +188,22 @@
                         </div>
                         <div id="list-non-teaching-days" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
                     </div>
+                    <div class="border-t pt-4">
+                        <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
+                            <h2 class="text-lg md:text-xl font-bold text-blue-800">6. Días No Disponibles</h2>
+                            <div class="flex gap-2 items-center ml-auto">
+                                <button onclick="window.app.clearHolidays('unavailable')" class="text-xs text-red-500 hover:text-red-700 underline font-medium mr-1">Borrar</button>
+                                <button onclick="window.app.openDateModal('unavailable')" class="text-sm bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 shadow-sm">+ Añadir</button>
+                            </div>
+                        </div>
+                        <div id="list-unavailable-days" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
+                    </div>
                 </div>
             </div>
 
             <div class="bg-white p-4 md:p-6 rounded-lg shadow border border-red-100">
                 <h2 class="text-lg md:text-xl font-bold mb-0 text-red-800 border-b border-red-100 pb-2 flex items-center gap-2 cursor-pointer select-none" onclick="window.app.toggleDeleteConfig()">
-                    <i data-lucide="trash-2" class="w-5 h-5"></i> 6. Eliminar Permisos Almacenados
+                    <i data-lucide="trash-2" class="w-5 h-5"></i> 7. Eliminar Permisos Almacenados
                     <i id="delete-chevron" data-lucide="chevron-up" class="w-4 h-4 ml-auto transition-transform duration-300" style="transform: rotate(180deg);"></i>
                 </h2>
                 <div id="delete-config-content" class="mt-4 transition-all duration-300 overflow-hidden hidden" style="height: 0px;">
@@ -221,6 +237,7 @@
                 <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border"><div class="w-3 h-3 bg-purple-200 rounded"></div> F. Local</div>
                 <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border"><div class="w-3 h-3 bg-orange-200 rounded"></div> F. Prov</div>
                 <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border"><div class="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded"></div> No Lect</div>
+                <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border"><div class="w-3 h-3 bg-gray-300 rounded"></div> No Dispon.</div>
                 <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border font-bold"><div class="w-3 h-3 border-2 border-blue-500 rounded"></div> Solicitud</div>
             </div>
             <div id="calendar-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"></div>
@@ -416,7 +433,7 @@
 
     <script type="module">
         window.app = {
-            config: { startYear: new Date().getFullYear(), teachers: [], localHolidays: [], provHolidays: [], nonTeachingDays: [] },
+            config: { startYear: new Date().getFullYear(), teachers: [], localHolidays: [], provHolidays: [], nonTeachingDays: [], unavailableDays: [] },
             requests: [], 
             tempHolidayType: null,
             selectedDate: null,
@@ -557,7 +574,6 @@
                 
                 if (resp.status === 204) {
                     showNotification('Copia eliminada correctamente.');
-                    // Recargar lista forzando refresco
                     window.app.loadGitHub(); 
                 } else {
                     const txt = await resp.text();
@@ -670,7 +686,6 @@
         };
         window.app.hideTooltip = () => { document.getElementById('custom-tooltip').style.display = 'none'; };
 
-        // --- EXPORT PDF MODIFICADO (FECHAS DD/MM/YYYY) ---
         window.app.exportPDF = (type) => {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
@@ -690,7 +705,6 @@
                 const s = document.getElementById('report-start').value;
                 const e = document.getElementById('report-end').value;
                 
-                // Formateador de fecha manual YYYY-MM-DD -> DD/MM/YYYY
                 const fmt = (d) => {
                     if(!d) return '';
                     const [y, m, da] = d.split('-');
@@ -770,6 +784,7 @@
             renderHolidayList('local', 'list-local-holidays');
             renderHolidayList('provincial', 'list-prov-holidays');
             renderHolidayList('nonTeaching', 'list-non-teaching-days');
+            renderHolidayList('unavailable', 'list-unavailable-days');
             lucide.createIcons();
         }
 
@@ -779,6 +794,7 @@
             if (type === 'local') { list = window.app.config.localHolidays; colorClass = 'bg-purple-100 text-purple-800'; }
             else if (type === 'provincial') { list = window.app.config.provHolidays; colorClass = 'bg-orange-100 text-orange-800'; }
             else if (type === 'nonTeaching') { list = window.app.config.nonTeachingDays || []; colorClass = 'bg-yellow-100 text-yellow-800'; }
+            else if (type === 'unavailable') { list = window.app.config.unavailableDays || []; colorClass = 'bg-gray-200 text-gray-800'; }
             container.innerHTML = '';
             if(list.length === 0) { container.innerHTML = '<span class="text-gray-400 text-sm">Ninguno</span>'; return; }
             list.forEach(date => {
@@ -800,7 +816,6 @@
                 renderAll(); 
             }
         };
-        // MODIFICADO: Confirmación al borrar profesor
         window.app.removeTeacher = (id) => { 
             const t = window.app.config.teachers.find(teacher => teacher.id === id);
             if(confirm(`¿Eliminar al profesor ${t ? t.name : ''}?`)) {
@@ -811,27 +826,26 @@
         
         window.app.openDateModal = (type) => { window.app.tempHolidayType = type; document.getElementById('modal-holiday').classList.remove('hidden'); document.getElementById('container-end-date').classList.toggle('hidden', type !== 'nonTeaching'); };
         
-        // MODIFICADO: Confirmación al borrar festivo
         window.app.removeHoliday = (type, date) => { 
             let typeName = "";
             if(type === 'local') typeName = "festivo local";
             else if(type === 'provincial') typeName = "festivo provincial/nacional";
             else if(type === 'nonTeaching') typeName = "día no lectivo";
+            else if(type === 'unavailable') typeName = "día no disponible";
             
             if(confirm(`¿Eliminar el ${typeName} del ${new Date(date).toLocaleDateString()}?`)) {
-                const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':'nonTeachingDays'); 
+                const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':(type==='unavailable'?'unavailableDays':'nonTeachingDays')); 
                 window.app.config[target] = window.app.config[target].filter(d => d !== date); 
                 renderAll(); 
             }
         };
         
         window.app.clearHolidays = (type) => {
-            const map = { local: 'localHolidays', provincial: 'provHolidays', nonTeaching: 'nonTeachingDays' };
-            const label = { local: 'festivos locales', provincial: 'festivos provinciales', nonTeaching: 'días no lectivos' };
+            const map = { local: 'localHolidays', provincial: 'provHolidays', nonTeaching: 'nonTeachingDays', unavailable: 'unavailableDays' };
+            const label = { local: 'festivos locales', provincial: 'festivos provinciales', nonTeaching: 'días no lectivos', unavailable: 'días no disponibles' };
             if(confirm(`¿Borrar TODOS los ${label[type]}?`)) { window.app.config[map[type]] = []; renderAll(); renderCalendar(); showNotification(`Eliminados ${label[type]}`); }
         };
 
-        // MODIFICADO: Limpieza de casillas recuperada
         window.app.bulkDeleteRequests = () => {
             const cbPaidTeaching = document.getElementById('del-type-paid-teaching');
             const cbPaidNonTeaching = document.getElementById('del-type-paid-non-teaching');
@@ -866,8 +880,14 @@
         window.app.confirmAddHoliday = () => {
             const ds = document.getElementById('input-holiday-date').value; if(!ds) return;
             const type = window.app.tempHolidayType;
-            const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':'nonTeachingDays');
+            let target = '';
+            if(type === 'local') target = 'localHolidays';
+            else if(type === 'provincial') target = 'provHolidays';
+            else if(type === 'unavailable') target = 'unavailableDays';
+            else target = 'nonTeachingDays';
+
             if(!window.app.config[target]) window.app.config[target] = [];
+            
             if(type === 'nonTeaching') {
                 const de = document.getElementById('input-holiday-end-date').value;
                 if(!de) return alert("Indica fin.");
@@ -901,6 +921,7 @@
                     const isL = window.app.config.localHolidays.includes(dateStr);
                     const isP = window.app.config.provHolidays.includes(dateStr);
                     const isN = (window.app.config.nonTeachingDays||[]).includes(dateStr);
+                    const isU = (window.app.config.unavailableDays||[]).includes(dateStr);
                     const reqs = window.app.requests.filter(r => r.date === dateStr);
                     
                     let cls = "calendar-cell"; let num = "font-medium text-sm";
@@ -908,6 +929,7 @@
                     else if(isL) { cls += " cell-local"; num="text-purple-700 font-bold"; }
                     else if(isP) { cls += " cell-prov"; num="text-orange-700 font-bold"; }
                     else if(isN) { cls += " cell-non-teaching"; num="text-yellow-700 font-bold"; }
+                    else if(isU) { cls += " cell-unavailable"; num="text-gray-700 font-bold"; }
                     if(reqs.length>0) cls += " cell-active";
 
                     let dots = ''; let attrs = '';
@@ -932,7 +954,7 @@
                         }).join('<br>').replace(/'/g, "&apos;");
                         attrs = `onmouseenter="window.app.showTooltip(event, '${tips}')" onmouseleave="window.app.hideTooltip()"`;
                     }
-                    const clk = (!isW && !isL && !isP) ? `onclick="window.app.openRequestModal('${dateStr}')"` : '';
+                    const clk = (!isW && !isL && !isP && !isU) ? `onclick="window.app.openRequestModal('${dateStr}')"` : '';
                     html += `<div class="${cls}" ${clk} ${attrs}><span class="${num}">${d}</span>${dots}</div>`;
                 }
                 html += `</div>`; card.innerHTML = html; container.appendChild(card);
@@ -997,8 +1019,8 @@
             window.app.openRequestModal(ds); renderCalendar(); showNotification(`Añadidos: ${add}`);
         };
 
-        window.app.renderSummaryTable = () => {
-            const tb = document.getElementById('table-summary-body'); tb.innerHTML='';
+        function renderSummaryTable() {
+            const tb=document.getElementById('table-summary-body'); tb.innerHTML='';
             const teachersSorted = [...window.app.config.teachers].sort((a,b) => a.name.localeCompare(b.name));
             const filterElement = document.querySelector('input[name="filter-summary"]:checked');
             const filterValue = filterElement ? filterElement.value : 'all';
@@ -1048,11 +1070,12 @@
 	<script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('PWA Lista'))
+            // Aseguramos que cargamos la última versión del SW
+            navigator.serviceWorker.register('./sw.js?v=2')
+                .then(reg => console.log('PWA Lista', reg))
                 .catch(err => console.log('Error PWA', err));
         });
     }
-	</script>
+</script>
 </body>
 </html>
