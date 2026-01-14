@@ -33,6 +33,7 @@
         .cell-weekend { background-color: #FEF2F2; cursor: not-allowed; opacity: 0.6; } 
         .cell-local { background-color: #F3E8FF; cursor: not-allowed; } 
         .cell-prov { background-color: #FFEDD5; cursor: not-allowed; } 
+        .cell-unavailable { background-color: #F1F5F9; cursor: not-allowed; }
         .cell-non-teaching { background-color: #FEF9C3; } 
         
         .cell-active { box-shadow: inset 0 0 0 1px #3B82F6; }
@@ -174,7 +175,17 @@
                     </div>
                     <div class="border-t pt-4">
                         <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
-                            <h2 class="text-lg md:text-xl font-bold text-blue-800">5. Días No Lectivos</h2>
+                            <h2 class="text-lg md:text-xl font-bold text-blue-800">5. Días No Disponibles</h2>
+                            <div class="flex gap-2 items-center ml-auto">
+                                <button onclick="window.app.clearHolidays('unavailable')" class="text-xs text-red-500 hover:text-red-700 underline font-medium mr-1">Borrar</button>
+                                <button onclick="window.app.openDateModal('unavailable')" class="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 shadow-sm">+ Añadir</button>
+                            </div>
+                        </div>
+                        <div id="list-unavailable-days" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
+                    </div>
+                    <div class="border-t pt-4">
+                        <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
+                            <h2 class="text-lg md:text-xl font-bold text-blue-800">6. Días No Lectivos</h2>
                             <div class="flex gap-2 items-center ml-auto">
                                 <button onclick="window.app.clearHolidays('nonTeaching')" class="text-xs text-red-500 hover:text-red-700 underline font-medium mr-1">Borrar</button>
                                 <button onclick="window.app.openDateModal('nonTeaching')" class="text-sm bg-yellow-100 text-yellow-700 px-3 py-1 rounded hover:bg-yellow-200 shadow-sm">+ Tramo</button>
@@ -187,7 +198,7 @@
 
             <div class="bg-white p-4 md:p-6 rounded-lg shadow border border-red-100">
                 <h2 class="text-lg md:text-xl font-bold mb-0 text-red-800 border-b border-red-100 pb-2 flex items-center gap-2 cursor-pointer select-none" onclick="window.app.toggleDeleteConfig()">
-                    <i data-lucide="trash-2" class="w-5 h-5"></i> 6. Eliminar Permisos Almacenados
+                    <i data-lucide="trash-2" class="w-5 h-5"></i> 7. Eliminar Permisos Almacenados
                     <i id="delete-chevron" data-lucide="chevron-up" class="w-4 h-4 ml-auto transition-transform duration-300" style="transform: rotate(180deg);"></i>
                 </h2>
                 <div id="delete-config-content" class="mt-4 transition-all duration-300 overflow-hidden hidden" style="height: 0px;">
@@ -220,6 +231,7 @@
                 <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border"><div class="w-3 h-3 bg-red-100 rounded"></div> Finde/Festivo</div>
                 <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border"><div class="w-3 h-3 bg-purple-200 rounded"></div> F. Local</div>
                 <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border"><div class="w-3 h-3 bg-orange-200 rounded"></div> F. Prov</div>
+                <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border"><div class="w-3 h-3 bg-gray-200 rounded"></div> No Disponible</div>
                 <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border"><div class="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded"></div> No Lect</div>
                 <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border font-bold"><div class="w-3 h-3 border-2 border-blue-500 rounded"></div> Solicitud</div>
             </div>
@@ -416,11 +428,19 @@
 
     <script type="module">
         window.app = {
-            config: { startYear: new Date().getFullYear(), teachers: [], localHolidays: [], provHolidays: [], nonTeachingDays: [] },
+            config: { 
+                startYear: new Date().getFullYear(), 
+                teachers: [], 
+                localHolidays: [], 
+                provHolidays: [], 
+                unavailableDays: [],  // NUEVO: Días no disponibles
+                nonTeachingDays: [] 
+            },
             requests: [], 
             tempHolidayType: null,
             selectedDate: null,
-            githubToken: localStorage.getItem('githubToken') || ''
+            githubToken: localStorage.getItem('githubToken') || '',
+            currentGistId: null  // NUEVO: Para saber qué Gist estamos editando
         };
 
         async function init() {
@@ -512,8 +532,24 @@
                 document.getElementById('input-github-token').focus();
                 return alert("Primero configura y valida tu Token de GitHub.");
             }
-            const userDesc = prompt("Nombre para esta copia de seguridad (opcional):", "Copia manual");
-            if (userDesc === null) return; 
+            
+            let userDesc;
+            let overwrite = false;
+            
+            // Si hay un Gist cargado, preguntar si sobrescribir
+            if (window.app.currentGistId) {
+                const choice = confirm("¿Deseas sobrescribir el Gist actual?\n\nAceptar = Sobrescribir\nCancelar = Crear nuevo Gist");
+                if (choice) {
+                    overwrite = true;
+                    userDesc = prompt("Nombre para esta versión (opcional):", "Copia actualizada");
+                } else {
+                    userDesc = prompt("Nombre para la nueva copia (opcional):", "Copia nueva");
+                }
+            } else {
+                userDesc = prompt("Nombre para esta copia de seguridad (opcional):", "Copia manual");
+            }
+            
+            if (userDesc === null) return; // Usuario canceló
 
             try {
                 showNotification('Conectando con GitHub...', 'info');
@@ -521,11 +557,35 @@
                 const headers = { 'Authorization': `token ${window.app.githubToken}`, 'Accept': 'application/vnd.github.v3+json' };
                 const finalDesc = userDesc.trim() ? `${GIST_DESC} - ${userDesc}` : `${GIST_DESC} - ${new Date().toLocaleString()}`;
 
-                const body = { description: finalDesc, public: false, files: { [GIST_FILENAME]: { content: content } } };
-                const resp = await fetch('https://api.github.com/gists', { method: 'POST', headers, body: JSON.stringify(body) });
+                let resp;
+                
+                if (overwrite && window.app.currentGistId) {
+                    // Sobrescribir Gist existente
+                    const body = { description: finalDesc, files: { [GIST_FILENAME]: { content: content } } };
+                    resp = await fetch(`https://api.github.com/gists/${window.app.currentGistId}`, {
+                        method: 'PATCH', 
+                        headers, 
+                        body: JSON.stringify(body)
+                    });
+                } else {
+                    // Crear nuevo Gist
+                    const body = { description: finalDesc, public: false, files: { [GIST_FILENAME]: { content: content } } };
+                    resp = await fetch('https://api.github.com/gists', { method: 'POST', headers, body: JSON.stringify(body) });
+                }
+                
                 if(!resp.ok) throw new Error(`Error al guardar: ${resp.status}`);
+                
+                // Si creamos uno nuevo, guardar su ID
+                if (!overwrite) {
+                    const gistData = await resp.json();
+                    window.app.currentGistId = gistData.id;
+                }
+                
                 showNotification('¡Datos guardados en GitHub correctamente!');
-            } catch (e) { console.error(e); showNotification(e.message, 'error'); }
+            } catch (e) { 
+                console.error(e); 
+                showNotification(e.message, 'error'); 
+            }
         };
 
         window.app.loadGitHub = async () => {
@@ -624,7 +684,15 @@
                     window.app.config = data.config;
                     window.app.requests = data.requests;
                     window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name));
-                    renderAll(); renderCalendar(); 
+                    
+                    // Guardar el ID del Gist cargado
+                    window.app.currentGistId = gistId;
+                    
+                    // Asegurarse de que los nuevos arrays existan
+                    if (!window.app.config.unavailableDays) window.app.config.unavailableDays = [];
+                    
+                    renderAll(); 
+                    renderCalendar(); 
                     window.app.renderSummaryTable();
                     window.app.saveLocal();
                     showNotification('¡Copia restaurada!');
@@ -716,14 +784,26 @@
         };
 
         window.app.importJSON = async (e) => {
-            const file = e.target.files[0]; if (!file) return;
+            const file = e.target.files[0]; 
+            if (!file) return;
             try {
                 const text = await file.text();
                 const data = JSON.parse(text);
                 if (data.config && data.requests) {
-                    window.app.config = data.config; window.app.requests = data.requests;
+                    window.app.config = data.config; 
+                    window.app.requests = data.requests;
                     window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name)); 
-                    renderAll(); renderCalendar(); window.app.saveLocal(); showNotification('Datos importados');
+                    
+                    // Resetear el ID del Gist (ya que es un archivo local)
+                    window.app.currentGistId = null;
+                    
+                    // Asegurarse de que los nuevos arrays existan
+                    if (!window.app.config.unavailableDays) window.app.config.unavailableDays = [];
+                    
+                    renderAll(); 
+                    renderCalendar(); 
+                    window.app.saveLocal(); 
+                    showNotification('Datos importados');
                 }
             } catch (err) { showNotification('Error JSON', 'error'); }
             e.target.value = ''; 
@@ -769,18 +849,39 @@
             });
             renderHolidayList('local', 'list-local-holidays');
             renderHolidayList('provincial', 'list-prov-holidays');
+            renderHolidayList('unavailable', 'list-unavailable-days');  // NUEVO
             renderHolidayList('nonTeaching', 'list-non-teaching-days');
             lucide.createIcons();
         }
 
         function renderHolidayList(type, containerId) {
             const container = document.getElementById(containerId);
-            let list = []; let colorClass = '';
-            if (type === 'local') { list = window.app.config.localHolidays; colorClass = 'bg-purple-100 text-purple-800'; }
-            else if (type === 'provincial') { list = window.app.config.provHolidays; colorClass = 'bg-orange-100 text-orange-800'; }
-            else if (type === 'nonTeaching') { list = window.app.config.nonTeachingDays || []; colorClass = 'bg-yellow-100 text-yellow-800'; }
+            let list = []; 
+            let colorClass = '';
+            
+            if (type === 'local') { 
+                list = window.app.config.localHolidays; 
+                colorClass = 'bg-purple-100 text-purple-800'; 
+            }
+            else if (type === 'provincial') { 
+                list = window.app.config.provHolidays; 
+                colorClass = 'bg-orange-100 text-orange-800'; 
+            }
+            else if (type === 'nonTeaching') { 
+                list = window.app.config.nonTeachingDays || []; 
+                colorClass = 'bg-yellow-100 text-yellow-800'; 
+            }
+            else if (type === 'unavailable') {  // NUEVO
+                list = window.app.config.unavailableDays || []; 
+                colorClass = 'bg-gray-100 text-gray-800'; 
+            }
+            
             container.innerHTML = '';
-            if(list.length === 0) { container.innerHTML = '<span class="text-gray-400 text-sm">Ninguno</span>'; return; }
+            if(list.length === 0) { 
+                container.innerHTML = '<span class="text-gray-400 text-sm">Ninguno</span>'; 
+                return; 
+            }
+            
             list.forEach(date => {
                 const span = document.createElement('span');
                 span.className = `${colorClass} px-2 py-1 rounded text-sm flex items-center gap-1`;
@@ -809,26 +910,48 @@
             }
         };
         
-        window.app.openDateModal = (type) => { window.app.tempHolidayType = type; document.getElementById('modal-holiday').classList.remove('hidden'); document.getElementById('container-end-date').classList.toggle('hidden', type !== 'nonTeaching'); };
+        window.app.openDateModal = (type) => { 
+            window.app.tempHolidayType = type; 
+            document.getElementById('modal-holiday').classList.remove('hidden'); 
+            document.getElementById('container-end-date').classList.toggle('hidden', type !== 'nonTeaching'); 
+        };
         
         // MODIFICADO: Confirmación al borrar festivo
         window.app.removeHoliday = (type, date) => { 
             let typeName = "";
             if(type === 'local') typeName = "festivo local";
             else if(type === 'provincial') typeName = "festivo provincial/nacional";
+            else if(type === 'unavailable') typeName = "día no disponible";  // NUEVO
             else if(type === 'nonTeaching') typeName = "día no lectivo";
             
             if(confirm(`¿Eliminar el ${typeName} del ${new Date(date).toLocaleDateString()}?`)) {
-                const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':'nonTeachingDays'); 
+                const target = type==='local'?'localHolidays':
+                              (type==='provincial'?'provHolidays':
+                              (type==='unavailable'?'unavailableDays':'nonTeachingDays'));  // MODIFICADO
                 window.app.config[target] = window.app.config[target].filter(d => d !== date); 
                 renderAll(); 
             }
         };
         
         window.app.clearHolidays = (type) => {
-            const map = { local: 'localHolidays', provincial: 'provHolidays', nonTeaching: 'nonTeachingDays' };
-            const label = { local: 'festivos locales', provincial: 'festivos provinciales', nonTeaching: 'días no lectivos' };
-            if(confirm(`¿Borrar TODOS los ${label[type]}?`)) { window.app.config[map[type]] = []; renderAll(); renderCalendar(); showNotification(`Eliminados ${label[type]}`); }
+            const map = { 
+                local: 'localHolidays', 
+                provincial: 'provHolidays', 
+                unavailable: 'unavailableDays',  // NUEVO
+                nonTeaching: 'nonTeachingDays' 
+            };
+            const label = { 
+                local: 'festivos locales', 
+                provincial: 'festivos provinciales', 
+                unavailable: 'días no disponibles',  // NUEVO
+                nonTeaching: 'días no lectivos' 
+            };
+            if(confirm(`¿Borrar TODOS los ${label[type]}?`)) { 
+                window.app.config[map[type]] = []; 
+                renderAll(); 
+                renderCalendar(); 
+                showNotification(`Eliminados ${label[type]}`); 
+            }
         };
 
         // MODIFICADO: Limpieza de casillas recuperada
@@ -864,10 +987,14 @@
         };
         
         window.app.confirmAddHoliday = () => {
-            const ds = document.getElementById('input-holiday-date').value; if(!ds) return;
+            const ds = document.getElementById('input-holiday-date').value; 
+            if(!ds) return;
             const type = window.app.tempHolidayType;
-            const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':'nonTeachingDays');
+            const target = type==='local'?'localHolidays':
+                          (type==='provincial'?'provHolidays':
+                          (type==='unavailable'?'unavailableDays':'nonTeachingDays'));  // MODIFICADO
             if(!window.app.config[target]) window.app.config[target] = [];
+            
             if(type === 'nonTeaching') {
                 const de = document.getElementById('input-holiday-end-date').value;
                 if(!de) return alert("Indica fin.");
@@ -877,8 +1004,12 @@
                     if(!window.app.config[target].includes(dStr)) window.app.config[target].push(dStr);
                     curr.setDate(curr.getDate()+1);
                 }
-            } else { if(!window.app.config[target].includes(ds)) window.app.config[target].push(ds); }
-            window.app.config[target].sort(); window.app.closeModal('modal-holiday'); renderAll();
+            } else { 
+                if(!window.app.config[target].includes(ds)) window.app.config[target].push(ds); 
+            }
+            window.app.config[target].sort(); 
+            window.app.closeModal('modal-holiday'); 
+            renderAll();
         };
 
         function renderCalendar() {
@@ -900,13 +1031,16 @@
                     const isW = day===0||day===6;
                     const isL = window.app.config.localHolidays.includes(dateStr);
                     const isP = window.app.config.provHolidays.includes(dateStr);
+                    const isU = (window.app.config.unavailableDays||[]).includes(dateStr);  // NUEVO
                     const isN = (window.app.config.nonTeachingDays||[]).includes(dateStr);
                     const reqs = window.app.requests.filter(r => r.date === dateStr);
                     
-                    let cls = "calendar-cell"; let num = "font-medium text-sm";
+                    let cls = "calendar-cell"; 
+                    let num = "font-medium text-sm";
                     if(isW) { cls += " cell-weekend"; num="text-red-400"; }
                     else if(isL) { cls += " cell-local"; num="text-purple-700 font-bold"; }
                     else if(isP) { cls += " cell-prov"; num="text-orange-700 font-bold"; }
+                    else if(isU) { cls += " cell-unavailable"; num="text-gray-700 font-bold"; }  // NUEVO
                     else if(isN) { cls += " cell-non-teaching"; num="text-yellow-700 font-bold"; }
                     if(reqs.length>0) cls += " cell-active";
 
@@ -932,7 +1066,7 @@
                         }).join('<br>').replace(/'/g, "&apos;");
                         attrs = `onmouseenter="window.app.showTooltip(event, '${tips}')" onmouseleave="window.app.hideTooltip()"`;
                     }
-                    const clk = (!isW && !isL && !isP) ? `onclick="window.app.openRequestModal('${dateStr}')"` : '';
+                    const clk = (!isW && !isL && !isP && !isU) ? `onclick="window.app.openRequestModal('${dateStr}')"` : '';  // MODIFICADO
                     html += `<div class="${cls}" ${clk} ${attrs}><span class="${num}">${d}</span>${dots}</div>`;
                 }
                 html += `</div>`; card.innerHTML = html; container.appendChild(card);
