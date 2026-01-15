@@ -53,6 +53,12 @@
         
         /* Ajustes móviles para inputs */
         input, select, button { touch-action: manipulation; }
+        
+        /* Acordeones */
+        .accordion-content {
+            overflow: hidden;
+            transition: height 0.3s ease-out, opacity 0.2s ease-out;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col pb-safe">
@@ -94,7 +100,7 @@
             <div id="notification-msg" class="px-6 py-3 rounded-lg shadow-lg text-white font-medium inline-block w-full md:w-auto"></div>
         </div>
 
-        <div id="view-config" class="space-y-6 fade-in pb-10">
+        <div id="view-config" class="space-y-4 fade-in pb-10">
             
             <div class="flex justify-end">
                 <button onclick="window.app.openHelpModal()" class="flex items-center gap-2 text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-full font-medium transition shadow-sm border border-blue-200 text-sm w-full md:w-auto justify-center">
@@ -102,125 +108,170 @@
                 </button>
             </div>
 
-            <div class="bg-white p-4 md:p-6 rounded-lg shadow border border-gray-100">
-                <h2 class="text-lg md:text-xl font-bold mb-4 text-blue-800 border-b pb-2">1. Datos del Curso</h2>
-                <div class="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 flex-wrap">
-                    <label class="font-medium">Año de inicio (Septiembre):</label>
-                    <div class="flex items-center gap-2 w-full md:w-auto">
-                        <input type="number" id="input-start-year" class="border p-2 rounded w-full md:w-32 focus:ring-2 focus:ring-blue-500 outline-none" onchange="window.app.updateConfig('year')">
-                        <span class="text-gray-500 text-sm whitespace-nowrap" id="text-end-year">→ Fin: ...</span>
+            <!-- 1. DATOS DEL CURSO - Acordeón -->
+            <div class="bg-white rounded-lg shadow border border-gray-100">
+                <div class="flex items-center justify-between p-4 md:p-6 cursor-pointer select-none border-b" onclick="window.app.toggleAccordion('curso')">
+                    <h2 class="text-lg md:text-xl font-bold text-blue-800 flex items-center gap-2">
+                        <i data-lucide="calendar-days" class="w-5 h-5"></i> 1. Datos del Curso
+                    </h2>
+                    <i id="chevron-curso" data-lucide="chevron-down" class="w-5 h-5 text-gray-500 transition-transform duration-300"></i>
+                </div>
+                <div id="accordion-content-curso" class="accordion-content hidden" style="height: 0px;">
+                    <div class="p-4 md:p-6 pt-0">
+                        <div class="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 flex-wrap mt-4">
+                            <label class="font-medium">Año de inicio (Septiembre):</label>
+                            <div class="flex items-center gap-2 w-full md:w-auto">
+                                <input type="number" id="input-start-year" class="border p-2 rounded w-full md:w-32 focus:ring-2 focus:ring-blue-500 outline-none" onchange="window.app.updateConfig('year')">
+                                <span class="text-gray-500 text-sm whitespace-nowrap" id="text-end-year">→ Fin: ...</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-white p-4 md:p-6 rounded-lg shadow border border-gray-100 border-l-4 border-l-gray-800 transition-all duration-300">
-                <h2 class="text-lg md:text-xl font-bold mb-0 text-gray-800 border-b pb-2 flex items-center gap-2 cursor-pointer select-none" onclick="window.app.toggleGithubConfig()">
-                    <i data-lucide="github" class="w-5 h-5"></i> Configuración Nube
-                    <i id="github-chevron" data-lucide="chevron-up" class="w-4 h-4 ml-auto transition-transform duration-300"></i>
-                </h2>
-                <div id="github-config-content" class="flex flex-col gap-4 mt-4 transition-all duration-300 overflow-hidden">
-                    <p class="text-sm text-gray-600">
-                        Introduce tu <strong>Personal Access Token</strong> de GitHub (permiso <code>gist</code>).
-                    </p>
-                    <div class="flex flex-col md:flex-row gap-2 items-stretch md:items-center">
-                        <input type="password" id="input-github-token" placeholder="ghp_xxxxxxxxxxxx..." class="flex-1 border p-2 rounded focus:ring-2 focus:ring-gray-500 outline-none text-sm font-mono">
-                        <button onclick="window.app.saveGithubToken()" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition text-sm font-bold">
-                            Validar
-                        </button>
-                    </div>
-                    <div id="github-msg" class="text-xs font-bold text-gray-400">Token no configurado.</div>
+            <!-- 2. CONFIGURACIÓN NUBE - Acordeón -->
+            <div class="bg-white rounded-lg shadow border border-gray-100">
+                <div class="flex items-center justify-between p-4 md:p-6 cursor-pointer select-none border-b" onclick="window.app.toggleAccordion('nube')">
+                    <h2 class="text-lg md:text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <i data-lucide="github" class="w-5 h-5"></i> 2. Configuración Nube
+                    </h2>
+                    <i id="chevron-nube" data-lucide="chevron-down" class="w-5 h-5 text-gray-500 transition-transform duration-300"></i>
                 </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white p-4 md:p-6 rounded-lg shadow border border-gray-100 flex flex-col h-full">
-                    <h2 class="text-lg md:text-xl font-bold mb-4 text-blue-800 border-b pb-2">2. Profesorado</h2>
-                    <form onsubmit="window.app.addTeacherManual(event)" class="flex gap-2 mb-4">
-                        <input type="text" id="input-new-teacher" placeholder="Nombre manual..." class="flex-1 border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                        <button type="submit" class="bg-green-600 text-white p-2 rounded hover:bg-green-700 px-4"><i data-lucide="plus" class="w-5 h-5"></i></button>
-                    </form>
-                    <div class="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
-                        <div class="flex items-center gap-2 mb-2 text-blue-800 font-medium"><i data-lucide="file-spreadsheet" class="w-5 h-5"></i><span>Importar Excel</span></div>
-                        <label class="cursor-pointer bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 transition w-full py-2 px-3 rounded flex items-center justify-center gap-2 text-sm font-medium shadow-sm active:bg-blue-100">
-                            <i data-lucide="upload" class="w-4 h-4"></i> Seleccionar archivo
-                            <input type="file" accept=".xlsx, .xls" class="hidden" onchange="window.app.handleExcelUpload(event)">
-                        </label>
-                    </div>
-                    <div class="flex-1 overflow-hidden flex flex-col min-h-[150px]">
-                        <span id="teacher-count" class="text-xs text-gray-400 mb-1 uppercase tracking-wider font-bold">Listado (0)</span>
-                        <ul id="list-teachers" class="flex-1 overflow-y-auto space-y-2 border-t pt-2 max-h-60"></ul>
-                    </div>
-                </div>
-
-                <div class="bg-white p-4 md:p-6 rounded-lg shadow border border-gray-100 flex flex-col gap-4">
-                    <div>
-                        <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
-                            <h2 class="text-lg md:text-xl font-bold text-blue-800">3. Festivos Locales</h2>
-                            <div class="flex gap-2 items-center ml-auto">
-                                <button onclick="window.app.clearHolidays('local')" class="text-xs text-red-500 hover:text-red-700 underline font-medium mr-1">Borrar</button>
-                                <button onclick="window.app.openDateModal('local')" class="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded hover:bg-purple-200 shadow-sm">+ Añadir</button>
+                <div id="accordion-content-nube" class="accordion-content hidden" style="height: 0px;">
+                    <div class="p-4 md:p-6 pt-0">
+                        <div class="flex flex-col gap-4 mt-4">
+                            <p class="text-sm text-gray-600">
+                                Introduce tu <strong>Personal Access Token</strong> de GitHub (permiso <code>gist</code>).
+                            </p>
+                            <div class="flex flex-col md:flex-row gap-2 items-stretch md:items-center">
+                                <input type="password" id="input-github-token" placeholder="ghp_xxxxxxxxxxxx..." class="flex-1 border p-2 rounded focus:ring-2 focus:ring-gray-500 outline-none text-sm font-mono">
+                                <button onclick="window.app.saveGithubToken()" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition text-sm font-bold">
+                                    Validar
+                                </button>
                             </div>
+                            <div id="github-msg" class="text-xs font-bold text-gray-400">Token no configurado.</div>
                         </div>
-                        <div id="list-local-holidays" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
-                    </div>
-                    <div class="border-t pt-4">
-                        <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
-                            <h2 class="text-lg md:text-xl font-bold text-blue-800">4. Festivos Provinciales/Nacionales</h2>
-                            <div class="flex gap-2 items-center ml-auto">
-                                <button onclick="window.app.clearHolidays('provincial')" class="text-xs text-red-500 hover:text-red-700 underline font-medium mr-1">Borrar</button>
-                                <button onclick="window.app.openDateModal('provincial')" class="text-sm bg-orange-100 text-orange-700 px-3 py-1 rounded hover:bg-orange-200 shadow-sm">+ Añadir</button>
-                            </div>
-                        </div>
-                        <div id="list-prov-holidays" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
-                    </div>
-                    <div class="border-t pt-4">
-                        <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
-                            <h2 class="text-lg md:text-xl font-bold text-blue-800">5. Días No Disponibles</h2>
-                            <div class="flex gap-2 items-center ml-auto">
-                                <button onclick="window.app.clearHolidays('unavailable')" class="text-xs text-red-500 hover:text-red-700 underline font-medium mr-1">Borrar</button>
-                                <button onclick="window.app.openDateModal('unavailable')" class="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 shadow-sm">+ Añadir</button>
-                            </div>
-                        </div>
-                        <div id="list-unavailable-days" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
-                    </div>
-                    <div class="border-t pt-4">
-                        <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
-                            <h2 class="text-lg md:text-xl font-bold text-blue-800">6. Días No Lectivos</h2>
-                            <div class="flex gap-2 items-center ml-auto">
-                                <button onclick="window.app.clearHolidays('nonTeaching')" class="text-xs text-red-500 hover:text-red-700 underline font-medium mr-1">Borrar</button>
-                                <button onclick="window.app.openDateModal('nonTeaching')" class="text-sm bg-yellow-100 text-yellow-700 px-3 py-1 rounded hover:bg-yellow-200 shadow-sm">+ Tramo</button>
-                            </div>
-                        </div>
-                        <div id="list-non-teaching-days" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-white p-4 md:p-6 rounded-lg shadow border border-red-100">
-                <h2 class="text-lg md:text-xl font-bold mb-0 text-red-800 border-b border-red-100 pb-2 flex items-center gap-2 cursor-pointer select-none" onclick="window.app.toggleDeleteConfig()">
-                    <i data-lucide="trash-2" class="w-5 h-5"></i> 7. Eliminar Permisos Almacenados
-                    <i id="delete-chevron" data-lucide="chevron-up" class="w-4 h-4 ml-auto transition-transform duration-300" style="transform: rotate(180deg);"></i>
-                </h2>
-                <div id="delete-config-content" class="mt-4 transition-all duration-300 overflow-hidden hidden" style="height: 0px;">
-                    <div class="bg-red-50 p-4 rounded-lg">
-                        <p class="text-sm text-red-900 mb-3 font-medium">Selecciona los tipos de permisos que deseas eliminar definitivamente:</p>
-                        <div class="flex flex-col sm:flex-row flex-wrap gap-3 mb-4">
-                            <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-3 rounded border border-red-200 shadow-sm active:bg-gray-50">
-                                <input type="checkbox" id="del-type-paid-teaching" class="w-5 h-5 text-red-600 focus:ring-red-500 border-gray-300 rounded">
-                                <span class="text-sm text-gray-700">Retribuidos Lectivos</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-3 rounded border border-red-200 shadow-sm active:bg-gray-50">
-                                <input type="checkbox" id="del-type-paid-non-teaching" class="w-5 h-5 text-red-600 focus:ring-red-500 border-gray-300 rounded">
-                                <span class="text-sm text-gray-700">Retribuidos No Lectivos</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-3 rounded border border-red-200 shadow-sm active:bg-gray-50">
-                                <input type="checkbox" id="del-type-unpaid" class="w-5 h-5 text-red-600 focus:ring-red-500 border-gray-300 rounded">
-                                <span class="text-sm text-gray-700">No Retribuidos</span>
-                            </label>
+            <!-- 3. PROFESORADO - Acordeón -->
+            <div class="bg-white rounded-lg shadow border border-gray-100">
+                <div class="flex items-center justify-between p-4 md:p-6 cursor-pointer select-none border-b" onclick="window.app.toggleAccordion('profesorado')">
+                    <h2 class="text-lg md:text-xl font-bold text-blue-800 flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5"></i> 3. Profesorado
+                    </h2>
+                    <i id="chevron-profesorado" data-lucide="chevron-down" class="w-5 h-5 text-gray-500 transition-transform duration-300"></i>
+                </div>
+                <div id="accordion-content-profesorado" class="accordion-content hidden" style="height: 0px;">
+                    <div class="p-4 md:p-6 pt-0">
+                        <div class="flex flex-col h-full">
+                            <form onsubmit="window.app.addTeacherManual(event)" class="flex gap-2 mb-4">
+                                <input type="text" id="input-new-teacher" placeholder="Nombre manual..." class="flex-1 border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                <button type="submit" class="bg-green-600 text-white p-2 rounded hover:bg-green-700 px-4"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                            </form>
+                            <div class="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                <div class="flex items-center gap-2 mb-2 text-blue-800 font-medium"><i data-lucide="file-spreadsheet" class="w-5 h-5"></i><span>Importar Excel</span></div>
+                                <label class="cursor-pointer bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 transition w-full py-2 px-3 rounded flex items-center justify-center gap-2 text-sm font-medium shadow-sm active:bg-blue-100">
+                                    <i data-lucide="upload" class="w-4 h-4"></i> Seleccionar archivo
+                                    <input type="file" accept=".xlsx, .xls" class="hidden" onchange="window.app.handleExcelUpload(event)">
+                                </label>
+                            </div>
+                            <div class="flex-1 overflow-hidden flex flex-col min-h-[150px]">
+                                <span id="teacher-count" class="text-xs text-gray-400 mb-1 uppercase tracking-wider font-bold">Listado (0)</span>
+                                <ul id="list-teachers" class="flex-1 overflow-y-auto space-y-2 border-t pt-2 max-h-60"></ul>
+                            </div>
                         </div>
-                        <button onclick="window.app.bulkDeleteRequests()" class="w-full sm:w-auto bg-red-600 text-white px-6 py-3 rounded hover:bg-red-700 transition text-sm font-bold flex items-center justify-center gap-2 shadow active:scale-95">
-                            <i data-lucide="trash" class="w-4 h-4"></i> Eliminar seleccionados
-                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. FESTIVOS Y DÍAS ESPECIALES - Acordeón -->
+            <div class="bg-white rounded-lg shadow border border-gray-100">
+                <div class="flex items-center justify-between p-4 md:p-6 cursor-pointer select-none border-b" onclick="window.app.toggleAccordion('festivos')">
+                    <h2 class="text-lg md:text-xl font-bold text-blue-800 flex items-center gap-2">
+                        <i data-lucide="calendar-x" class="w-5 h-5"></i> 4. Festivos y Días Especiales
+                    </h2>
+                    <i id="chevron-festivos" data-lucide="chevron-down" class="w-5 h-5 text-gray-500 transition-transform duration-300"></i>
+                </div>
+                <div id="accordion-content-festivos" class="accordion-content hidden" style="height: 0px;">
+                    <div class="p-4 md:p-6 pt-0">
+                        <div class="flex flex-col gap-4">
+                            <div>
+                                <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
+                                    <h3 class="text-md font-bold text-blue-700">Festivos Locales</h3>
+                                    <div class="flex gap-2 items-center ml-auto">
+                                        <button onclick="window.app.clearHolidays('local')" class="text-xs text-red-500 hover:text-red-700 underline font-medium mr-1">Borrar</button>
+                                        <button onclick="window.app.openDateModal('local')" class="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded hover:bg-purple-200 shadow-sm">+ Añadir</button>
+                                    </div>
+                                </div>
+                                <div id="list-local-holidays" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
+                            </div>
+                            <div class="border-t pt-4">
+                                <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
+                                    <h3 class="text-md font-bold text-blue-700">Festivos Provinciales/Nacionales</h3>
+                                    <div class="flex gap-2 items-center ml-auto">
+                                        <button onclick="window.app.clearHolidays('provincial')" class="text-xs text-red-500 hover:text-red-700 underline font-medium mr-1">Borrar</button>
+                                        <button onclick="window.app.openDateModal('provincial')" class="text-sm bg-orange-100 text-orange-700 px-3 py-1 rounded hover:bg-orange-200 shadow-sm">+ Añadir</button>
+                                    </div>
+                                </div>
+                                <div id="list-prov-holidays" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
+                            </div>
+                            <div class="border-t pt-4">
+                                <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
+                                    <h3 class="text-md font-bold text-blue-700">Días No Disponibles</h3>
+                                    <div class="flex gap-2 items-center ml-auto">
+                                        <button onclick="window.app.clearHolidays('unavailable')" class="text-xs text-red-500 hover:text-red-700 underline font-medium mr-1">Borrar</button>
+                                        <button onclick="window.app.openDateModal('unavailable')" class="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 shadow-sm">+ Añadir</button>
+                                    </div>
+                                </div>
+                                <div id="list-unavailable-days" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
+                            </div>
+                            <div class="border-t pt-4">
+                                <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
+                                    <h3 class="text-md font-bold text-blue-700">Días No Lectivos</h3>
+                                    <div class="flex gap-2 items-center ml-auto">
+                                        <button onclick="window.app.clearHolidays('nonTeaching')" class="text-xs text-red-500 hover:text-red-700 underline font-medium mr-1">Borrar</button>
+                                        <button onclick="window.app.openDateModal('nonTeaching')" class="text-sm bg-yellow-100 text-yellow-700 px-3 py-1 rounded hover:bg-yellow-200 shadow-sm">+ Tramo</button>
+                                    </div>
+                                </div>
+                                <div id="list-non-teaching-days" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. ELIMINAR PERMISOS - Acordeón -->
+            <div class="bg-white rounded-lg shadow border border-red-100">
+                <div class="flex items-center justify-between p-4 md:p-6 cursor-pointer select-none border-b border-red-100" onclick="window.app.toggleAccordion('eliminar')">
+                    <h2 class="text-lg md:text-xl font-bold text-red-800 flex items-center gap-2">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i> 5. Eliminar Permisos Almacenados
+                    </h2>
+                    <i id="chevron-eliminar" data-lucide="chevron-down" class="w-5 h-5 text-red-500 transition-transform duration-300"></i>
+                </div>
+                <div id="accordion-content-eliminar" class="accordion-content hidden" style="height: 0px;">
+                    <div class="p-4 md:p-6 pt-0">
+                        <div class="bg-red-50 p-4 rounded-lg mt-4">
+                            <p class="text-sm text-red-900 mb-3 font-medium">Selecciona los tipos de permisos que deseas eliminar definitivamente:</p>
+                            <div class="flex flex-col sm:flex-row flex-wrap gap-3 mb-4">
+                                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-3 rounded border border-red-200 shadow-sm active:bg-gray-50">
+                                    <input type="checkbox" id="del-type-paid-teaching" class="w-5 h-5 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                                    <span class="text-sm text-gray-700">Retribuidos Lectivos</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-3 rounded border border-red-200 shadow-sm active:bg-gray-50">
+                                    <input type="checkbox" id="del-type-paid-non-teaching" class="w-5 h-5 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                                    <span class="text-sm text-gray-700">Retribuidos No Lectivos</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-3 rounded border border-red-200 shadow-sm active:bg-gray-50">
+                                    <input type="checkbox" id="del-type-unpaid" class="w-5 h-5 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                                    <span class="text-sm text-gray-700">No Retribuidos</span>
+                                </label>
+                            </div>
+                            <button onclick="window.app.bulkDeleteRequests()" class="w-full sm:w-auto bg-red-600 text-white px-6 py-3 rounded hover:bg-red-700 transition text-sm font-bold flex items-center justify-center gap-2 shadow active:scale-95">
+                                <i data-lucide="trash" class="w-4 h-4"></i> Eliminar seleccionados
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -433,14 +484,14 @@
                 teachers: [], 
                 localHolidays: [], 
                 provHolidays: [], 
-                unavailableDays: [],  // NUEVO: Días no disponibles
+                unavailableDays: [],
                 nonTeachingDays: [] 
             },
             requests: [], 
             tempHolidayType: null,
             selectedDate: null,
             githubToken: localStorage.getItem('githubToken') || '',
-            currentGistId: null  // NUEVO: Para saber qué Gist estamos editando
+            currentGistId: null
         };
 
         async function init() {
@@ -452,6 +503,12 @@
                 window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name));
                 if(window.app.githubToken) document.getElementById('input-github-token').value = window.app.githubToken;
                 renderAll();
+                
+                // Inicializar acordeones - abrir el primero por defecto
+                setTimeout(() => {
+                    window.app.toggleAccordion('curso', true);
+                }, 100);
+                
             } catch (err) { console.error(err); } 
             finally {
                 const loader = document.getElementById('app-loader');
@@ -459,6 +516,61 @@
                 lucide.createIcons();
             }
         }
+
+        // Función para manejar acordeones
+        window.app.toggleAccordion = (id, forceOpen = false) => {
+            const content = document.getElementById(`accordion-content-${id}`);
+            const chevron = document.getElementById(`chevron-${id}`);
+            
+            if (!content || !chevron) return;
+            
+            const isHidden = content.classList.contains('hidden');
+            
+            // Si forceOpen es true y ya está abierto, no hacer nada
+            if (forceOpen && !isHidden) return;
+            
+            // Si forceOpen es true, abrirlo
+            if (forceOpen) {
+                content.classList.remove('hidden');
+                content.style.height = 'auto';
+                const height = content.scrollHeight;
+                content.style.height = '0px';
+                setTimeout(() => {
+                    content.style.height = height + 'px';
+                    setTimeout(() => {
+                        content.style.height = 'auto';
+                    }, 300);
+                }, 10);
+                chevron.style.transform = 'rotate(180deg)';
+                return;
+            }
+            
+            // Comportamiento normal de toggle
+            if (isHidden) {
+                // Abrir
+                content.classList.remove('hidden');
+                content.style.height = 'auto';
+                const height = content.scrollHeight;
+                content.style.height = '0px';
+                setTimeout(() => {
+                    content.style.height = height + 'px';
+                    setTimeout(() => {
+                        content.style.height = 'auto';
+                    }, 300);
+                }, 10);
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                // Cerrar
+                content.style.height = content.scrollHeight + 'px';
+                setTimeout(() => {
+                    content.style.height = '0px';
+                    setTimeout(() => {
+                        content.classList.add('hidden');
+                    }, 300);
+                }, 10);
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        };
 
         function updateAuthStatus(isConnected, userLogin) {
             const el = document.getElementById('auth-status');
@@ -477,33 +589,7 @@
         const GIST_FILENAME = 'gestor_permisos_data.json';
         const GIST_DESC = 'Gestor de Permisos Escolar - Datos';
 
-        window.app.toggleGithubConfig = () => {
-            const content = document.getElementById('github-config-content');
-            const chevron = document.getElementById('github-chevron');
-            if (content.style.height === '0px' || content.classList.contains('hidden')) {
-                content.classList.remove('hidden'); content.style.height = 'auto';
-                chevron.style.transform = 'rotate(0deg)';
-            } else {
-                content.style.height = '0px'; content.classList.add('hidden');
-                chevron.style.transform = 'rotate(180deg)';
-            }
-        };
-
-        window.app.toggleDeleteConfig = () => {
-            const content = document.getElementById('delete-config-content');
-            const chevron = document.getElementById('delete-chevron');
-            
-            if (content.style.height === '0px' || content.classList.contains('hidden')) {
-                content.classList.remove('hidden'); 
-                content.style.height = 'auto';
-                chevron.style.transform = 'rotate(0deg)';
-            } else {
-                content.style.height = '0px'; 
-                content.classList.add('hidden');
-                chevron.style.transform = 'rotate(180deg)';
-            }
-        };
-
+        // Eliminar las funciones toggleGithubConfig y toggleDeleteConfig ya que ahora usamos acordeones
         window.app.saveGithubToken = async () => {
             const t = document.getElementById('input-github-token').value.trim();
             if(!t) return alert("Introduce un token válido");
@@ -518,7 +604,6 @@
                 localStorage.setItem('githubToken', t);
                 updateAuthStatus(true, user.login);
                 showNotification(`Conectado como ${user.login}`);
-                window.app.toggleGithubConfig(); 
             } catch(e) {
                 console.error(e);
                 updateAuthStatus(false, "Token inválido");
@@ -529,6 +614,8 @@
         window.app.saveGitHub = async () => {
             if(!window.app.githubToken) {
                 window.app.switchTab('config');
+                // Abrir acordeón de nube si no hay token
+                window.app.toggleAccordion('nube', true);
                 document.getElementById('input-github-token').focus();
                 return alert("Primero configura y valida tu Token de GitHub.");
             }
@@ -589,7 +676,12 @@
         };
 
         window.app.loadGitHub = async () => {
-            if(!window.app.githubToken) return alert("Configura tu Token primero.");
+            if(!window.app.githubToken) {
+                window.app.switchTab('config');
+                // Abrir acordeón de nube si no hay token
+                window.app.toggleAccordion('nube', true);
+                return alert("Configura tu Token primero.");
+            }
             try {
                 showNotification('Consultando GitHub...', 'info');
                 const headers = { 'Authorization': `token ${window.app.githubToken}`, 'Accept': 'application/vnd.github.v3+json' };
@@ -849,7 +941,7 @@
             });
             renderHolidayList('local', 'list-local-holidays');
             renderHolidayList('provincial', 'list-prov-holidays');
-            renderHolidayList('unavailable', 'list-unavailable-days');  // NUEVO
+            renderHolidayList('unavailable', 'list-unavailable-days');
             renderHolidayList('nonTeaching', 'list-non-teaching-days');
             lucide.createIcons();
         }
@@ -871,7 +963,7 @@
                 list = window.app.config.nonTeachingDays || []; 
                 colorClass = 'bg-yellow-100 text-yellow-800'; 
             }
-            else if (type === 'unavailable') {  // NUEVO
+            else if (type === 'unavailable') {
                 list = window.app.config.unavailableDays || []; 
                 colorClass = 'bg-gray-100 text-gray-800'; 
             }
@@ -921,13 +1013,13 @@
             let typeName = "";
             if(type === 'local') typeName = "festivo local";
             else if(type === 'provincial') typeName = "festivo provincial/nacional";
-            else if(type === 'unavailable') typeName = "día no disponible";  // NUEVO
+            else if(type === 'unavailable') typeName = "día no disponible";
             else if(type === 'nonTeaching') typeName = "día no lectivo";
             
             if(confirm(`¿Eliminar el ${typeName} del ${new Date(date).toLocaleDateString()}?`)) {
                 const target = type==='local'?'localHolidays':
                               (type==='provincial'?'provHolidays':
-                              (type==='unavailable'?'unavailableDays':'nonTeachingDays'));  // MODIFICADO
+                              (type==='unavailable'?'unavailableDays':'nonTeachingDays'));
                 window.app.config[target] = window.app.config[target].filter(d => d !== date); 
                 renderAll(); 
             }
@@ -937,13 +1029,13 @@
             const map = { 
                 local: 'localHolidays', 
                 provincial: 'provHolidays', 
-                unavailable: 'unavailableDays',  // NUEVO
+                unavailable: 'unavailableDays',
                 nonTeaching: 'nonTeachingDays' 
             };
             const label = { 
                 local: 'festivos locales', 
                 provincial: 'festivos provinciales', 
-                unavailable: 'días no disponibles',  // NUEVO
+                unavailable: 'días no disponibles',
                 nonTeaching: 'días no lectivos' 
             };
             if(confirm(`¿Borrar TODOS los ${label[type]}?`)) { 
@@ -992,7 +1084,7 @@
             const type = window.app.tempHolidayType;
             const target = type==='local'?'localHolidays':
                           (type==='provincial'?'provHolidays':
-                          (type==='unavailable'?'unavailableDays':'nonTeachingDays'));  // MODIFICADO
+                          (type==='unavailable'?'unavailableDays':'nonTeachingDays'));
             if(!window.app.config[target]) window.app.config[target] = [];
             
             if(type === 'nonTeaching') {
@@ -1031,7 +1123,7 @@
                     const isW = day===0||day===6;
                     const isL = window.app.config.localHolidays.includes(dateStr);
                     const isP = window.app.config.provHolidays.includes(dateStr);
-                    const isU = (window.app.config.unavailableDays||[]).includes(dateStr);  // NUEVO
+                    const isU = (window.app.config.unavailableDays||[]).includes(dateStr);
                     const isN = (window.app.config.nonTeachingDays||[]).includes(dateStr);
                     const reqs = window.app.requests.filter(r => r.date === dateStr);
                     
@@ -1040,7 +1132,7 @@
                     if(isW) { cls += " cell-weekend"; num="text-red-400"; }
                     else if(isL) { cls += " cell-local"; num="text-purple-700 font-bold"; }
                     else if(isP) { cls += " cell-prov"; num="text-orange-700 font-bold"; }
-                    else if(isU) { cls += " cell-unavailable"; num="text-gray-700 font-bold"; }  // NUEVO
+                    else if(isU) { cls += " cell-unavailable"; num="text-gray-700 font-bold"; }
                     else if(isN) { cls += " cell-non-teaching"; num="text-yellow-700 font-bold"; }
                     if(reqs.length>0) cls += " cell-active";
 
@@ -1066,7 +1158,7 @@
                         }).join('<br>').replace(/'/g, "&apos;");
                         attrs = `onmouseenter="window.app.showTooltip(event, '${tips}')" onmouseleave="window.app.hideTooltip()"`;
                     }
-                    const clk = (!isW && !isL && !isP && !isU) ? `onclick="window.app.openRequestModal('${dateStr}')"` : '';  // MODIFICADO
+                    const clk = (!isW && !isL && !isP && !isU) ? `onclick="window.app.openRequestModal('${dateStr}')"` : '';
                     html += `<div class="${cls}" ${clk} ${attrs}><span class="${num}">${d}</span>${dots}</div>`;
                 }
                 html += `</div>`; card.innerHTML = html; container.appendChild(card);
