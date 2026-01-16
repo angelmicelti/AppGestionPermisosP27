@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestor-permisos-v4';
+const CACHE_NAME = 'gestor-permisos-v5';
 const ASSETS_TO_CACHE = [
   './',
 './index.html',
