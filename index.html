@@ -1,16 +1,41 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestor de Asuntos Propios</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Gestor de Asuntos Propios</title>
+		
+		<link rel="icon" type="image/x-icon" href="icons/favicon.ico">
+
+		<!-- PWA: Manifest -->
+		<link rel="manifest" href="manifest.json">
+		
+		<!-- PWA: Theme Color -->
+		<meta name="theme-color" content="#2563EB">
+		
+		<!-- PWA: Apple Touch Icon (para iOS) -->
+		<link rel="apple-touch-icon" href="icons/icon-192.png">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+		<meta name="apple-mobile-web-app-title" content="Gestor Permisos">
+		
+		<!-- PWA: Iconos para diferentes dispositivos -->
+		<link rel="icon" type="image/png" href="icons/icon-72.png" sizes="72x72">
+		<link rel="icon" type="image/png" href="icons/icon-96.png" sizes="96x96">
+		<link rel="icon" type="image/png" href="icons/icon-128.png" sizes="128x128">
+		<link rel="icon" type="image/png" href="icons/icon-144.png" sizes="144x144">
+		<link rel="icon" type="image/png" href="icons/icon-152.png" sizes="152x152">
+		<link rel="icon" type="image/png" href="icons/icon-192.png" sizes="192x192">
+		<link rel="icon" type="image/png" href="icons/icon-384.png" sizes="384x384">
+		<link rel="icon" type="image/png" href="icons/icon-512.png" sizes="512x512">
+		
+		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+		
+		<script src="https://unpkg.com/lucide@latest"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
 
     <style>
         /* --- ESTILOS VISUALES (Diseño Original adaptado a Bootstrap) --- */
@@ -68,8 +93,43 @@
         .btn { border-radius: 0.375rem; padding: 0.5rem 1rem; font-weight: 500; border: none; }
         .card { border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); }
         .table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #4b5563; background-color: #f3f4f6; }
+        
+		/* Cambiar el color de fondo y texto del acordeón cuando está cerrado */
+		.accordion-button {
+			background-color: #eff6ff !important;  /* Azul claro */
+			color: #1e40af !important;            /* Azul oscuro para el texto */
+			font-weight: 600;
+		}
+
+		/* Cambiar el color de fondo y texto del acordeón cuando está abierto */
+		.accordion-button:not(.collapsed) {
+			background-color: #3b82f6 !important;  /* Azul más intenso */
+			color: white !important;                /* Texto blanco cuando está abierto */
+			box-shadow: inset 0 -1px 0 rgba(0,0,0,.125);
+		}
+
+		/* Cambiar el color del icono de flecha del acordeón */
+		.accordion-button::after {
+			background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%231e40af'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e") !important;
+		}
+
+		/* Cambiar el color del icono de flecha cuando el acordeón está abierto */
+		.accordion-button:not(.collapsed)::after {
+			background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e") !important;
+		}
+
+		/* Cambiar el borde del acordeón cuando tiene el foco */
+		.accordion-button:focus {
+			border-color: #3b82f6 !important;
+			box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+		}
+
+		/* Para mantener el color azul al pasar el ratón (hover) */
+		.accordion-button:hover {
+			background-color: #dbeafe !important;  /* Azul un poco más claro al hover */
+		}
     </style>
-</head>
+	</head>
 <body class="d-flex flex-column min-vh-100">
 
     <div id="app-loader">
@@ -109,123 +169,214 @@
         </div>
 
         <div id="view-config" class="fade-in pb-5">
-            <div class="card bg-white mb-4">
-                <div class="card-body p-4">
-                    <h2 class="h5 text-blue-800 border-bottom pb-2 fw-bold">1. Datos del Curso</h2>
-                    <div class="d-flex align-items-center gap-3 flex-wrap mt-3">
-                        <label class="fw-medium">Año de inicio (Septiembre):</label>
-                        <input type="number" id="input-start-year" class="form-control w-auto" style="width: 120px;" onchange="window.app.updateConfig('year')">
-                        <span class="text-secondary" id="text-end-year">→ Finaliza en Junio de ...</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card bg-white mb-4 border-start border-4 border-dark">
-                <div class="card-body p-4">
-                    <h2 class="h5 text-dark mb-0 d-flex align-items-center gap-2 cursor-pointer user-select-none" onclick="window.app.toggleGithubConfig()">
-                        <i data-lucide="github"></i> Configuración Nube (GitHub)
-                        <i id="github-chevron" data-lucide="chevron-up" class="ms-auto transition-transform"></i>
-                    </h2>
-                    <div id="github-config-content" class="mt-3 overflow-hidden transition-all hidden">
-                        <p class="small text-secondary mb-2">Para guardar en la nube, introduce tu <strong>Personal Access Token (Classic)</strong>.</p>
-                        <div class="d-flex gap-2 mb-2">
-                            <input type="password" id="input-github-token" placeholder="ghp_xxxxxxxxxxxx..." class="form-control font-monospace text-muted flex-grow-1">
-                            <button onclick="window.app.saveGithubToken()" class="btn btn-dark fw-bold btn-sm">Validar y Guardar</button>
-                        </div>
-                        <div id="github-msg" class="small fw-bold text-secondary">Token no configurado.</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <div class="card bg-white h-100">
-                        <div class="card-body p-4 d-flex flex-column">
-                            <h2 class="h5 text-blue-800 border-bottom pb-2 fw-bold mb-3">2. Profesorado</h2>
-                            <form onsubmit="window.app.addTeacherManual(event)" class="d-flex gap-2 mb-3">
-                                <input type="text" id="input-new-teacher" placeholder="Nombre manual..." class="form-control form-control-sm">
-                                <button type="submit" class="btn bg-green-600 text-white btn-sm hover:opacity-90"><i data-lucide="plus" style="width:16px"></i></button>
-                            </form>
-                            
-                            <div class="mb-3 p-3 bg-blue-50 rounded border border-primary-subtle">
-                                <div class="d-flex align-items-center gap-2 mb-2 text-primary fw-medium small">
-                                    <i data-lucide="file-spreadsheet" style="width:16px"></i><span>Importar Excel</span>
-                                </div>
-                                <label class="btn btn-light bg-white border w-100 btn-sm d-flex align-items-center justify-content-center gap-2 text-primary">
-                                    <i data-lucide="upload" style="width: 14px;"></i> Seleccionar archivo
-                                    <input type="file" accept=".xlsx, .xls" class="hidden" onchange="window.app.handleExcelUpload(event)">
-                                </label>
+            <!-- Acordeón 1: Datos del Curso -->
+            <div class="accordion" id="accordionConfig">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="calendar" style="width:18px"></i>
+                                <span class="fw-bold">1. Datos del Curso</span>
                             </div>
-                            <div class="flex-grow-1 d-flex flex-column overflow-hidden">
-                                <span id="teacher-count" class="small text-secondary fw-bold text-uppercase mb-2 d-block" style="font-size: 0.7rem;">Listado (0)</span>
-                                <ul id="list-teachers" class="list-group list-group-flush overflow-auto border-top" style="max-height: 240px;"></ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="card bg-white h-100">
-                        <div class="card-body p-4 d-flex flex-column gap-4">
-                            <div>
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h2 class="h5 text-blue-800 fw-bold mb-0">3. Festivos Locales</h2>
-                                    <div class="d-flex gap-2 align-items-center">
-                                        <button onclick="window.app.clearHolidays('local')" class="btn btn-link text-danger p-0 text-decoration-underline small me-2" style="font-size:0.75rem">Borrar todos</button>
-                                        <button onclick="window.app.openDateModal('local')" class="btn btn-sm bg-purple-100 text-purple-700 fw-bold py-0 px-2">+ Añadir</button>
-                                    </div>
-                                </div>
-                                <div id="list-local-holidays" class="d-flex flex-wrap gap-2"></div>
-                            </div>
-                            <div class="border-top pt-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h2 class="h5 text-blue-800 fw-bold mb-0">4. Festivos Provinciales</h2>
-                                    <div class="d-flex gap-2 align-items-center">
-                                        <button onclick="window.app.clearHolidays('provincial')" class="btn btn-link text-danger p-0 text-decoration-underline small me-2" style="font-size:0.75rem">Borrar todos</button>
-                                        <button onclick="window.app.openDateModal('provincial')" class="btn btn-sm bg-orange-100 text-orange-700 fw-bold py-0 px-2">+ Añadir</button>
-                                    </div>
-                                </div>
-                                <div id="list-prov-holidays" class="d-flex flex-wrap gap-2"></div>
-                            </div>
-                            <div class="border-top pt-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h2 class="h5 text-blue-800 fw-bold mb-0">5. Días No Lectivos</h2>
-                                    <div class="d-flex gap-2 align-items-center">
-                                        <button onclick="window.app.clearHolidays('nonTeaching')" class="btn btn-link text-danger p-0 text-decoration-underline small me-2" style="font-size:0.75rem">Borrar todos</button>
-                                        <button onclick="window.app.openDateModal('nonTeaching')" class="btn btn-sm bg-yellow-100 text-yellow-700 fw-bold py-0 px-2">+ Añadir Tramo</button>
-                                    </div>
-                                </div>
-                                <div id="list-non-teaching-days" class="d-flex flex-wrap gap-2"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card bg-white mt-4 border border-danger-subtle">
-                <div class="card-body p-4">
-                    <h2 class="h5 text-danger border-bottom border-danger-subtle pb-2 fw-bold d-flex align-items-center gap-2">
-                        <i data-lucide="trash-2"></i> 6. Eliminar Permisos Almacenados
-                    </h2>
-                    <div class="bg-danger bg-opacity-10 p-3 rounded">
-                        <p class="text-danger small fw-bold mb-2">Selecciona los tipos de permisos que deseas eliminar definitivamente:</p>
-                        <div class="d-flex flex-wrap gap-3 mb-3">
-                            <label class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded border cursor-pointer">
-                                <input class="form-check-input mt-0" type="checkbox" id="del-type-paid-teaching">
-                                <span class="small">Retribuidos Lectivos</span>
-                            </label>
-                            <label class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded border cursor-pointer">
-                                <input class="form-check-input mt-0" type="checkbox" id="del-type-paid-non-teaching">
-                                <span class="small">Retribuidos No Lectivos</span>
-                            </label>
-                            <label class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded border cursor-pointer">
-                                <input class="form-check-input mt-0" type="checkbox" id="del-type-unpaid">
-                                <span class="small">No Retribuidos</span>
-                            </label>
-                        </div>
-                        <button onclick="window.app.bulkDeleteRequests()" class="btn btn-danger btn-sm fw-bold d-flex align-items-center gap-2 shadow-sm">
-                            <i data-lucide="trash" style="width:16px"></i> Eliminar seleccionados
                         </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white mb-0">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center gap-3 flex-wrap mt-1">
+                                        <label class="fw-medium">Año de inicio (Septiembre):</label>
+                                        <input type="number" id="input-start-year" class="form-control w-auto" style="width: 120px;" onchange="window.app.updateConfig('year')">
+                                        <span class="text-secondary" id="text-end-year">→ Finaliza en Junio de ...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 2: Configuración Nube -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="github" style="width:18px"></i>
+                                <span class="fw-bold">Configuración Nube (GitHub)</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white mb-0 border-start border-4 border-dark">
+                                <div class="card-body p-3">
+                                    <p class="small text-secondary mb-2">Para guardar en la nube, introduce tu <strong>Personal Access Token (Classic)</strong>.</p>
+                                    <div class="d-flex gap-2 mb-2">
+                                        <input type="password" id="input-github-token" placeholder="ghp_xxxxxxxxxxxx..." class="form-control font-monospace text-muted flex-grow-1">
+                                        <button onclick="window.app.saveGithubToken()" class="btn btn-dark fw-bold btn-sm">Validar y Guardar</button>
+                                    </div>
+                                    <div id="github-msg" class="small fw-bold text-secondary">Token no configurado.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 3: Profesorado -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="users" style="width:18px"></i>
+                                <span class="fw-bold">2. Profesorado</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white h-100">
+                                <div class="card-body p-3 d-flex flex-column">
+                                    <form onsubmit="window.app.addTeacherManual(event)" class="d-flex gap-2 mb-3">
+                                        <input type="text" id="input-new-teacher" placeholder="Nombre manual..." class="form-control form-control-sm">
+                                        <button type="submit" class="btn bg-green-600 text-white btn-sm hover:opacity-90"><i data-lucide="plus" style="width:16px"></i></button>
+                                    </form>
+                                    
+                                    <div class="mb-3 p-3 bg-blue-50 rounded border border-primary-subtle">
+                                        <div class="d-flex align-items-center gap-2 mb-2 text-primary fw-medium small">
+                                            <i data-lucide="file-spreadsheet" style="width:16px"></i><span>Importar Excel</span>
+                                        </div>
+                                        <label class="btn btn-light bg-white border w-100 btn-sm d-flex align-items-center justify-content-center gap-2 text-primary">
+                                            <i data-lucide="upload" style="width: 14px;"></i> Seleccionar archivo
+                                            <input type="file" accept=".xlsx, .xls" class="hidden" onchange="window.app.handleExcelUpload(event)">
+                                        </label>
+                                    </div>
+                                    <div class="flex-grow-1 d-flex flex-column overflow-hidden">
+                                        <span id="teacher-count" class="small text-secondary fw-bold text-uppercase mb-2 d-block" style="font-size: 0.7rem;">Listado (0)</span>
+                                        <ul id="list-teachers" class="list-group list-group-flush overflow-auto border-top" style="max-height: 240px;"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 4: Festivos Locales -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="flag" style="width:18px"></i>
+                                <span class="fw-bold">3. Festivos Locales</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white h-100">
+                                <div class="card-body p-3 d-flex flex-column gap-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <button onclick="window.app.clearHolidays('local')" class="btn btn-link text-danger p-0 text-decoration-underline small me-2" style="font-size:0.75rem">Borrar todos</button>
+                                            <button onclick="window.app.openDateModal('local')" class="btn btn-sm bg-purple-100 text-purple-700 fw-bold py-0 px-2">+ Añadir</button>
+                                        </div>
+                                    </div>
+                                    <div id="list-local-holidays" class="d-flex flex-wrap gap-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 5: Festivos Provinciales -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="map-pin" style="width:18px"></i>
+                                <span class="fw-bold">4. Festivos Provinciales</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseFive" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white h-100">
+                                <div class="card-body p-3 d-flex flex-column gap-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <button onclick="window.app.clearHolidays('provincial')" class="btn btn-link text-danger p-0 text-decoration-underline small me-2" style="font-size:0.75rem">Borrar todos</button>
+                                            <button onclick="window.app.openDateModal('provincial')" class="btn btn-sm bg-orange-100 text-orange-700 fw-bold py-0 px-2">+ Añadir</button>
+                                        </div>
+                                    </div>
+                                    <div id="list-prov-holidays" class="d-flex flex-wrap gap-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 6: Días No Lectivos -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSix" aria-expanded="false" aria-controls="collapseSix">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="book-x" style="width:18px"></i>
+                                <span class="fw-bold">5. Días No Lectivos</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseSix" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white h-100">
+                                <div class="card-body p-3 d-flex flex-column gap-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <button onclick="window.app.clearHolidays('nonTeaching')" class="btn btn-link text-danger p-0 text-decoration-underline small me-2" style="font-size:0.75rem">Borrar todos</button>
+                                            <button onclick="window.app.openDateModal('nonTeaching')" class="btn btn-sm bg-yellow-100 text-yellow-700 fw-bold py-0 px-2">+ Añadir Tramo</button>
+                                        </div>
+                                    </div>
+                                    <div id="list-non-teaching-days" class="d-flex flex-wrap gap-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 7: Eliminar Permisos -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSeven" aria-expanded="false" aria-controls="collapseSeven">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="trash-2" style="width:18px"></i>
+                                <span class="fw-bold">6. Eliminar Permisos Almacenados</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseSeven" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white border border-danger-subtle">
+                                <div class="card-body p-3">
+                                    <div class="bg-danger bg-opacity-10 p-3 rounded">
+                                        <p class="text-danger small fw-bold mb-2">Selecciona los tipos de permisos que deseas eliminar definitivamente:</p>
+                                        <div class="d-flex flex-wrap gap-3 mb-3">
+                                            <label class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded border cursor-pointer">
+                                                <input class="form-check-input mt-0" type="checkbox" id="del-type-paid-teaching">
+                                                <span class="small">Retribuidos Lectivos</span>
+                                            </label>
+                                            <label class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded border cursor-pointer">
+                                                <input class="form-check-input mt-0" type="checkbox" id="del-type-paid-non-teaching">
+                                                <span class="small">Retribuidos No Lectivos</span>
+                                            </label>
+                                            <label class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded border cursor-pointer">
+                                                <input class="form-check-input mt-0" type="checkbox" id="del-type-unpaid">
+                                                <span class="small">No Retribuidos</span>
+                                            </label>
+                                        </div>
+                                        <button onclick="window.app.bulkDeleteRequests()" class="btn btn-danger btn-sm fw-bold d-flex align-items-center gap-2 shadow-sm">
+                                            <i data-lucide="trash" style="width:16px"></i> Eliminar seleccionados
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -242,73 +393,109 @@
             <div id="calendar-grid" class="row g-4"></div>
         </div>
 
-        <div id="view-stats" class="fade-in hidden">
-            <div class="card bg-white mb-4 shadow-sm border">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                        <h2 class="h5 text-blue-800 fw-bold d-flex align-items-center gap-2 mb-0">
-                            <i data-lucide="users"></i> Estado del Profesorado
-                        </h2>
-                        <div class="d-flex align-items-center gap-2">
-                            <select id="summary-filter" class="form-select form-select-sm w-auto" onchange="window.app.renderSummaryTable()">
-                                <option value="all">Ver Todos</option>
-                                <option value="with">Con Solicitudes</option>
-                                <option value="without">Sin Solicitudes</option>
-                            </select>
-                            <button onclick="window.app.exportPDF('summary')" class="btn btn-danger btn-sm d-flex align-items-center gap-2">
-                                <i data-lucide="file-text" style="width:16px"></i> PDF
-                            </button>
+<div id="view-stats" class="fade-in hidden">
+    <div class="accordion" id="accordionStats">
+        <!-- Acordeón 1: Estado del profesorado -->
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStatsOne" aria-expanded="false" aria-controls="collapseStatsOne">
+                    <div class="d-flex align-items-center gap-2 w-100">
+                        <i data-lucide="users"></i>
+                        <span class="fw-bold">Estado del Profesorado</span>
+                    </div>
+                </button>
+            </h2>
+            <div id="collapseStatsOne" class="accordion-collapse collapse" data-bs-parent="#accordionStats">
+                <div class="accordion-body p-0">
+                    <div class="card bg-white mb-0 shadow-sm border-0">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <h2 class="h5 text-blue-800 fw-bold mb-0 d-flex align-items-center gap-2">
+                                        <i data-lucide="users"></i> Estado del Profesorado
+                                    </h2>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <select id="summary-filter" class="form-select form-select-sm w-auto" onchange="window.app.renderSummaryTable()">
+                                        <option value="all">Ver Todos</option>
+                                        <option value="with">Con Solicitudes</option>
+                                        <option value="without">Sin Solicitudes</option>
+                                    </select>
+                                    <button onclick="window.app.exportPDF('summary')" class="btn btn-danger btn-sm d-flex align-items-center gap-2">
+                                        <i data-lucide="file-text" style="width:16px"></i> PDF
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0" id="table-summary">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="p-3">Profesor</th>
+                                            <th class="p-3 text-center">Retribuidos Lectivos (Máx 2)</th>
+                                            <th class="p-3 text-center">Retribuidos NO Lectivos (Máx. 4)</th>
+                                            <th class="p-3 text-center">No Retribuidos (∞)</th>
+                                            <th class="p-3 text-center">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-summary-body"></tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0" id="table-summary">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="p-3">Profesor</th>
-                                    <th class="p-3 text-center">Retribuidos Lectivos (Máx 2)</th>
-                                    <th class="p-3 text-center">Retribuidos NO Lectivos (Máx. 4)</th>
-                                    <th class="p-3 text-center">No Retribuidos (∞)</th>
-                                    <th class="p-3 text-center">Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-summary-body"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card bg-white shadow-sm border">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2 class="h5 text-blue-800 fw-bold d-flex align-items-center gap-2 mb-0"><i data-lucide="file-text"></i> Informe Detallado</h2>
-                        <button onclick="window.app.exportPDF('report')" class="btn btn-danger btn-sm d-flex align-items-center gap-2"><i data-lucide="file-text" style="width:16px"></i> PDF</button>
-                    </div>
-                    <div class="bg-light p-3 rounded mb-4 border d-flex gap-3 align-items-end flex-wrap">
-                        <div>
-                            <label class="form-label small text-secondary mb-1">Desde:</label>
-                            <input type="date" id="report-start" class="form-control" onchange="window.app.renderReportTable()">
-                        </div>
-                        <div>
-                            <label class="form-label small text-secondary mb-1">Hasta:</label>
-                            <input type="date" id="report-end" class="form-control" onchange="window.app.renderReportTable()">
-                        </div>
-                        <div class="ms-auto text-secondary small pb-2">Resultados: <span id="report-count" class="fw-bold">0</span></div>
-                    </div>
-                    <div class="table-responsive border rounded">
-                        <table class="table table-sm mb-0" id="table-report">
-                            <thead class="bg-blue-50 text-blue-800 small">
-                                <tr>
-                                    <th class="p-3">Fecha</th>
-                                    <th class="p-3">Profesor</th>
-                                    <th class="p-3">Tipo de Permiso</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-report-body"></tbody>
-                        </table>
                     </div>
                 </div>
             </div>
         </div>
+        
+        <!-- Acordeón 2: Informe Detallado -->
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStatsTwo" aria-expanded="false" aria-controls="collapseStatsTwo">
+                    <div class="d-flex align-items-center gap-2 w-100">
+                        <i data-lucide="file-text"></i>
+                        <span class="fw-bold">Informe Detallado</span>
+                    </div>
+                </button>
+            </h2>
+            <div id="collapseStatsTwo" class="accordion-collapse collapse" data-bs-parent="#accordionStats">
+                <div class="accordion-body p-0">
+                    <div class="card bg-white shadow-sm border-0">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2 class="h5 text-blue-800 fw-bold d-flex align-items-center gap-2 mb-0"><i data-lucide="file-text"></i> Informe Detallado</h2>
+                                <button onclick="window.app.exportPDF('report')" class="btn btn-danger btn-sm d-flex align-items-center gap-2"><i data-lucide="file-text" style="width:16px"></i> PDF</button>
+                            </div>
+                            <div class="bg-light p-3 rounded mb-4 border d-flex gap-3 align-items-end flex-wrap">
+                                <div>
+                                    <label class="form-label small text-secondary mb-1">Desde:</label>
+                                    <input type="date" id="report-start" class="form-control" onchange="window.app.renderReportTable()">
+                                </div>
+                                <div>
+                                    <label class="form-label small text-secondary mb-1">Hasta:</label>
+                                    <input type="date" id="report-end" class="form-control" onchange="window.app.renderReportTable()">
+                                </div>
+                                <div class="ms-auto text-secondary small pb-2">Resultados: <span id="report-count" class="fw-bold">0</span></div>
+                            </div>
+                            <div class="table-responsive border rounded">
+                                <table class="table table-sm mb-0" id="table-report">
+                                    <thead class="bg-blue-50 text-blue-800 small">
+                                        <tr>
+                                            <th class="p-3">Fecha</th>
+                                            <th class="p-3">Profesor</th>
+                                            <th class="p-3">Tipo de Permiso</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-report-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 
         <div class="card bg-white shadow-sm mt-4 border">
             <div class="card-body d-flex flex-wrap gap-2 align-items-center p-3">
@@ -401,6 +588,22 @@
         </div>
     </div>
 
+    <!-- Modal para mostrar fechas de permisos por tipo -->
+    <div id="modal-teacher-permits" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-3 hidden">
+        <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 500px; max-height: 80vh;">
+            <div class="bg-blue-700 text-white p-3 d-flex justify-content-between align-items-center rounded-top">
+                <h3 class="h6 fw-bold mb-0" id="modal-teacher-permits-title">Permisos del profesor</h3>
+                <button onclick="window.app.closeModal('modal-teacher-permits')" class="btn btn-sm text-white p-0"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-4 overflow-auto">
+                <div id="modal-teacher-permits-body"></div>
+            </div>
+            <div class="p-3 bg-light rounded-bottom d-flex justify-content-end">
+                <button onclick="window.app.closeModal('modal-teacher-permits')" class="btn btn-secondary btn-sm">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-github-list" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-3 hidden">
         <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 500px; max-height: 80vh;">
             <div class="bg-dark text-white p-3 d-flex justify-content-between align-items-center rounded-top">
@@ -416,6 +619,40 @@
             </div>
         </div>
     </div>
+
+    <!-- Bootstrap JS para los acordeones -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+	
+	    <!-- PWA: Service Worker Registration -->
+    <script>
+        // Registrar el Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js')
+                    .then(function(registration) {
+                        console.log('Service Worker registrado con éxito:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('Error al registrar el Service Worker:', error);
+                    });
+            });
+        }
+
+        // Detectar cuando la aplicación se instala como PWA
+        window.addEventListener('beforeinstallprompt', (event) => {
+            console.log('beforeinstallprompt disparado');
+            // Puedes guardar el evento para mostrar un botón de instalación más tarde
+            window.deferredPrompt = event;
+        });
+
+        // Detectar cuando la PWA se instaló correctamente
+        window.addEventListener('appinstalled', (event) => {
+            console.log('Aplicación instalada como PWA');
+            // Limpiar el prompt diferido
+            window.deferredPrompt = null;
+        });
+    </script>
+
 
     <script type="module">
         window.app = {
@@ -476,11 +713,10 @@
             }
         }
 
+        // Eliminamos la función toggleGithubConfig ya que ahora usamos acordeón de Bootstrap
         window.app.toggleGithubConfig = () => {
-            const content = document.getElementById('github-config-content');
-            const chevron = document.getElementById('github-chevron');
-            if (content.classList.contains('hidden')) { content.classList.remove('hidden'); chevron.style.transform = 'rotate(0deg)'; } 
-            else { content.classList.add('hidden'); chevron.style.transform = 'rotate(180deg)'; }
+            // Esta función ya no es necesaria porque usamos el acordeón de Bootstrap
+            console.log("Función obsoleta - ahora usamos acordeón de Bootstrap");
         };
 
         window.app.saveGithubToken = async () => {
@@ -493,7 +729,7 @@
                 const user = await res.json();
                 window.app.githubToken = t; localStorage.setItem('githubToken', t);
                 updateAuthStatus(true, user.login); showNotification(`Token válido. Conectado como ${user.login}`);
-                window.app.toggleGithubConfig(); 
+                // No necesitamos llamar a toggleGithubConfig porque el acordeón se maneja con Bootstrap
             } catch(e) { console.error(e); updateAuthStatus(false, "Token inválido"); showNotification("Error: El token no funciona", 'error'); }
         };
 
@@ -614,7 +850,68 @@
 			a.click();
 		};
 		
-		
+		// Nueva función para mostrar permisos por tipo
+		window.app.showTeacherPermitsByType = function(teacherId, teacherName, type) {
+			// Filtrar solicitudes del profesor por tipo
+			const requests = window.app.requests.filter(r => r.teacherId === teacherId && r.type === type);
+			
+			// Ordenar por fecha
+			requests.sort((a, b) => a.date.localeCompare(b.date));
+			
+			// Configurar el título del modal
+			const typeLabels = {
+				'paid_teaching': 'Retribuidos Lectivos',
+				'paid_non_teaching': 'Retribuidos NO Lectivos', 
+				'unpaid': 'No Retribuidos'
+			};
+			
+			document.getElementById('modal-teacher-permits-title').innerText = `${teacherName} - ${typeLabels[type] || type}`;
+			
+			// Construir el cuerpo del modal
+			const modalBody = document.getElementById('modal-teacher-permits-body');
+			if (requests.length === 0) {
+				modalBody.innerHTML = '<p class="text-muted text-center">No hay permisos de este tipo.</p>';
+			} else {
+				let html = '<div class="list-group">';
+				requests.forEach(req => {
+					const date = new Date(req.date);
+					const dateStr = date.toLocaleDateString('es-ES', { 
+						weekday: 'long', 
+						year: 'numeric', 
+						month: 'long', 
+						day: 'numeric' 
+					});
+					
+					// Formatear la fecha con la primera letra en mayúscula
+					const formattedDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+					
+					// Determinar el color del badge según el tipo
+					let badgeClass = '';
+					switch(type) {
+						case 'paid_teaching': badgeClass = 'bg-primary-subtle text-primary'; break;
+						case 'paid_non_teaching': badgeClass = 'bg-warning-subtle text-warning-emphasis'; break;
+						case 'unpaid': badgeClass = 'bg-secondary-subtle text-secondary-emphasis'; break;
+						default: badgeClass = 'bg-light text-dark';
+					}
+					
+					html += `
+						<div class="list-group-item d-flex justify-content-between align-items-center">
+							<div>
+								<div class="fw-medium">${formattedDate}</div>
+								<small class="text-muted">${req.date}</small>
+							</div>
+							<span class="badge ${badgeClass}">${typeLabels[type] || type}</span>
+						</div>
+					`;
+				});
+				html += '</div>';
+				modalBody.innerHTML = html;
+			}
+			
+			// Mostrar el modal
+			document.getElementById('modal-teacher-permits').classList.remove('hidden');
+			lucide.createIcons();
+		};
 		
         window.app.importJSON = async (e) => {
             const file = e.target.files[0]; if (!file) return;
@@ -903,9 +1200,29 @@
                 else if (pnt >= 4) { statusHtml = '<span class="badge bg-warning text-dark">Solo Lect. / No Retr.</span>'; }
 
                 const tr=document.createElement('tr');
-                tr.innerHTML=`<td class="fw-medium">${t.name}</td><td class="text-center"><span class="badge rounded-pill ${pt>=2?'bg-danger-subtle text-danger':'bg-primary-subtle text-primary'}">${pt} / 2</span></td><td class="text-center"><span class="badge rounded-pill ${pnt>=4?'bg-danger-subtle text-danger':'bg-warning-subtle text-warning-emphasis'}">${pnt} / 4</span></td><td class="text-center"><span class="badge rounded-pill bg-light text-dark border">${u}</span></td><td class="text-center">${statusHtml}</td>`;
+                // Modificamos las celdas para hacerlas clicables
+                tr.innerHTML=`
+                    <td class="fw-medium">${t.name}</td>
+                    <td class="text-center">
+                        <button class="btn btn-link p-0 text-decoration-none" onclick="window.app.showTeacherPermitsByType('${t.id}', '${t.name}', 'paid_teaching')">
+                            <span class="badge rounded-pill ${pt>=2?'bg-danger-subtle text-danger':'bg-primary-subtle text-primary'}">${pt} / 2</span>
+                        </button>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-link p-0 text-decoration-none" onclick="window.app.showTeacherPermitsByType('${t.id}', '${t.name}', 'paid_non_teaching')">
+                            <span class="badge rounded-pill ${pnt>=4?'bg-danger-subtle text-danger':'bg-warning-subtle text-warning-emphasis'}">${pnt} / 4</span>
+                        </button>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-link p-0 text-decoration-none" onclick="window.app.showTeacherPermitsByType('${t.id}', '${t.name}', 'unpaid')">
+                            <span class="badge rounded-pill bg-light text-dark border">${u}</span>
+                        </button>
+                    </td>
+                    <td class="text-center">${statusHtml}</td>
+                `;
                 tb.appendChild(tr);
             });
+            lucide.createIcons();
         };
 
         window.app.renderReportTable = () => {
