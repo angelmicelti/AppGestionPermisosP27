@@ -1,6 +1,6 @@
 {
-  "name": "Gestor de Asuntos Propios",
-  "short_name": "Asuntos Propios",
+  "name": "Gestor de Asuntos Propios P27",
+  "short_name": "Permisos P27",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -8,7 +8,37 @@
   "description": "Aplicación para la gestión de permisos del profesorado.",
   "icons": [
     {
+      "src": "icons/icon-72.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-96.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+	{
+      "src": "icons/icon-128.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-144.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+	{
+      "src": "icons/icon-152.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
       "src": "icons/icon-192.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+    {
+      "src": "icons/icon-1384.png",
       "sizes": "192x192",
       "type": "image/png"
     },
