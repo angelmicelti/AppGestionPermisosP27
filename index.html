@@ -623,38 +623,351 @@
     <!-- Bootstrap JS para los acordeones -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 	
-	    <!-- PWA: Service Worker Registration -->
-    <script>
-        // Registrar el Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js')
-                    .then(function(registration) {
-                        console.log('Service Worker registrado con éxito:', registration.scope);
-                    })
-                    .catch(function(error) {
-                        console.log('Error al registrar el Service Worker:', error);
+<!-- PWA: Service Worker Registration -->
+<script>
+    // Control de versiones - DEBE COINCIDIR con sw.js
+    const APP_VERSION = '1.3.1';
+    let newServiceWorker = null;
+    let registrationInstance = null;
+    let isUpdating = false;
+
+    // ================================================
+    // VERIFICACIÓN DE VERSIÓN AL CARGAR
+    // ================================================
+    (function checkVersionOnLoad() {
+        const savedVersion = localStorage.getItem('app_version');
+        console.log('📱 Versión guardada:', savedVersion, '| Nueva:', APP_VERSION);
+        
+        if (savedVersion !== APP_VERSION) {
+            console.log('🔄 Cambio de versión detectado');
+            
+            // Marcar que estamos en proceso de actualización
+            sessionStorage.setItem('updating_to', APP_VERSION);
+            
+            // Limpiar cachés de Service Worker
+            if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                    cacheNames.forEach(cacheName => {
+                        if (cacheName !== 'gestor-permisos-v' + APP_VERSION.replace(/\./g, '-')) {
+                            console.log('🗑️ Eliminando caché antigua:', cacheName);
+                            caches.delete(cacheName);
+                        }
                     });
+                });
+            }
+            
+            // Guardar nueva versión
+            localStorage.setItem('app_version', APP_VERSION);
+            
+            // Si estamos actualizando desde una versión anterior, recargar
+            if (savedVersion && savedVersion !== APP_VERSION) {
+                console.log('🔄 Recargando para aplicar actualización...');
+                setTimeout(() => {
+                    window.location.reload(true);
+                }, 1000);
+            }
+        }
+    })();
+
+    // ================================================
+    // REGISTRO DEL SERVICE WORKER
+    // ================================================
+    if ('serviceWorker' in navigator) {
+        // Registrar inmediatamente (no esperar a load)
+        navigator.serviceWorker.register('sw.js?v=' + APP_VERSION)
+            .then(function(registration) {
+                console.log('✅ Service Worker registrado. Scope:', registration.scope);
+                registrationInstance = registration;
+                
+                // Configurar comprobación periódica de actualizaciones
+                setInterval(() => {
+                    if (!isUpdating) {
+                        registration.update();
+                    }
+                }, 2 * 60 * 1000); // Cada 2 minutos
+                
+                // Escuchar actualizaciones del Service Worker
+                registration.addEventListener('updatefound', () => {
+                    newServiceWorker = registration.installing;
+                    console.log('🔄 Nuevo Service Worker encontrado. Estado:', newServiceWorker.state);
+                    
+                    newServiceWorker.addEventListener('statechange', () => {
+                        console.log('📊 Estado del nuevo SW:', newServiceWorker.state);
+                        
+                        if (newServiceWorker.state === 'installed') {
+                            if (navigator.serviceWorker.controller) {
+                                // Hay una nueva versión disponible
+                                console.log('🎉 Nueva versión del Service Worker lista');
+                                showUpdateNotification();
+                            }
+                        }
+                    });
+                });
+                
+                // Verificar actualizaciones inmediatamente
+                registration.update();
+            })
+            .catch(function(error) {
+                console.error('❌ Error registrando Service Worker:', error);
+            });
+        
+        // ================================================
+        // COMUNICACIÓN CON EL SERVICE WORKER
+        // ================================================
+        
+        // Escuchar mensajes del Service Worker
+        navigator.serviceWorker.addEventListener('message', event => {
+            if (event.data && event.data.type === 'SW_UPDATED') {
+                console.log('🔄 Service Worker actualizado a versión:', event.data.version);
+                showReloadNotification();
+            }
+            
+            if (event.data && event.data.type === 'CACHE_UPDATED') {
+                console.log('🔄 Cache actualizado para:', event.data.url);
+            }
+        });
+        
+        // Escuchar cambios de visibilidad (cuando la app vuelve a primer plano)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && registrationInstance && !isUpdating) {
+                console.log('🔍 App visible, verificando actualizaciones...');
+                registrationInstance.update();
+            }
+        });
+        
+        // Forzar actualización al conectar/desconectar red
+        window.addEventListener('online', () => {
+            if (registrationInstance && !isUpdating) {
+                console.log('📶 Conectado a internet, verificando actualizaciones...');
+                registrationInstance.update();
+            }
+        });
+    }
+
+    // ================================================
+    // FUNCIONES DE NOTIFICACIÓN
+    // ================================================
+    
+    function showUpdateNotification() {
+        // Solo mostrar si no estamos ya en proceso de actualización
+        if (isUpdating) return;
+        
+        // Crear notificación flotante
+        const notification = document.createElement('div');
+        notification.id = 'pwa-update-notification';
+        notification.innerHTML = `
+            <div class="alert alert-warning alert-dismissible fade show shadow-lg" role="alert" 
+                 style="position: fixed; bottom: 20px; right: 20px; left: 20px; z-index: 9999; max-width: 400px; margin: 0 auto;">
+                <div class="d-flex align-items-center">
+                    <i data-lucide="refresh-cw" class="me-2" style="width: 20px; height: 20px;"></i>
+                    <strong class="me-auto">Actualización disponible</strong>
+                </div>
+                <p class="mb-1 mt-2 small">Hay una nueva versión de la aplicación.</p>
+                <div class="d-flex gap-2 mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="updateAppNow()">
+                        Actualizar ahora
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="dismissUpdate()">
+                        Más tarde
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        lucide.createIcons();
+        
+        // Auto-ocultar después de 30 segundos
+        setTimeout(() => {
+            if (notification.parentNode && !isUpdating) {
+                notification.remove();
+            }
+        }, 30000);
+    }
+    
+    function showReloadNotification() {
+        const notification = document.createElement('div');
+        notification.id = 'pwa-reload-notification';
+        notification.innerHTML = `
+            <div class="alert alert-info alert-dismissible fade show shadow-lg" role="alert" 
+                 style="position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 350px;">
+                <div class="d-flex align-items-center">
+                    <i data-lucide="check-circle" class="me-2 text-success" style="width: 20px; height: 20px;"></i>
+                    <strong class="me-auto">Actualización lista</strong>
+                    <button type="button" class="btn-close btn-sm" onclick="this.parentElement.parentElement.parentElement.remove()"></button>
+                </div>
+                <p class="mb-0 mt-1 small">La aplicación se ha actualizado. <a href="javascript:location.reload()" class="alert-link">Recargar</a> para aplicar cambios.</p>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        lucide.createIcons();
+    }
+
+    // ================================================
+    // FUNCIONES GLOBALES PARA ACTUALIZACIÓN
+    // ================================================
+    
+    window.updateAppNow = function() {
+        isUpdating = true;
+        
+        if (newServiceWorker) {
+            console.log('🚀 Activando nuevo Service Worker...');
+            newServiceWorker.postMessage({ type: 'SKIP_WAITING' });
+        }
+        
+        // Mostrar loader
+        const loader = document.getElementById('app-loader');
+        if (loader) {
+            loader.style.display = 'flex';
+            loader.style.opacity = '1';
+            loader.innerHTML = `
+                <div class="spinner mb-4"></div>
+                <h2 class="h5 text-secondary fw-bold">Actualizando aplicación...</h2>
+                <p class="small text-muted mt-2">Esto tomará unos segundos</p>
+            `;
+        }
+        
+        // Recargar después de 1 segundo para dar tiempo al SW
+        setTimeout(() => {
+            console.log('🔄 Recargando aplicación...');
+            window.location.reload(true);
+        }, 1000);
+    };
+    
+    window.dismissUpdate = function() {
+        const notification = document.getElementById('pwa-update-notification');
+        if (notification) {
+            notification.remove();
+        }
+    };
+
+    // ================================================
+    // EVENTOS DE INSTALACIÓN PWA
+    // ================================================
+    
+    window.addEventListener('beforeinstallprompt', (event) => {
+        console.log('📲 PWA: beforeinstallprompt disparado');
+        window.deferredPrompt = event;
+        
+        // Opcional: Mostrar botón de instalación
+        // showInstallButton();
+    });
+
+    window.addEventListener('appinstalled', (event) => {
+        console.log('✅ PWA instalada correctamente');
+        window.deferredPrompt = null;
+        
+        // Limpiar caché para empezar fresco
+        if ('caches' in window) {
+            caches.keys().then(names => {
+                names.forEach(name => caches.delete(name));
             });
         }
+    });
 
-        // Detectar cuando la aplicación se instala como PWA
-        window.addEventListener('beforeinstallprompt', (event) => {
-            console.log('beforeinstallprompt disparado');
-            // Puedes guardar el evento para mostrar un botón de instalación más tarde
-            window.deferredPrompt = event;
-        });
-
-        // Detectar cuando la PWA se instaló correctamente
-        window.addEventListener('appinstalled', (event) => {
-            console.log('Aplicación instalada como PWA');
-            // Limpiar el prompt diferido
-            window.deferredPrompt = null;
-        });
-    </script>
-
+    // ================================================
+    // DETECCIÓN DE MODO OFFLINE/ONLINE
+    // ================================================
+    
+    window.addEventListener('offline', () => {
+        console.log('🔴 Modo offline');
+        // Podrías mostrar un indicador de offline
+    });
+    
+    window.addEventListener('online', () => {
+        console.log('🟢 Modo online');
+        // Intentar sincronizar si hay datos pendientes
+    });
+    
+    // ================================================
+    // VERIFICACIÓN AL VOLVER A LA APP (PAGESHOW)
+    // ================================================
+    
+    window.addEventListener('pageshow', (event) => {
+        // Si la página viene de cache (back/forward), forzar actualización
+        if (event.persisted && registrationInstance && !isUpdating) {
+            console.log('🔍 Página cargada desde cache, verificando actualizaciones...');
+            registrationInstance.update();
+            
+            // Verificar si hay una actualización pendiente
+            const pendingUpdate = sessionStorage.getItem('update_pending');
+            if (pendingUpdate === 'true') {
+                sessionStorage.removeItem('update_pending');
+                window.location.reload(true);
+            }
+        }
+    });
+    
+    // ================================================
+    // FORZAR ACTUALIZACIÓN MANUAL (para debugging)
+    // ================================================
+    
+    window.forceUpdate = function() {
+        if (registrationInstance) {
+            console.log('🔄 Forzando actualización manual...');
+            registrationInstance.update().then(() => {
+                if (newServiceWorker) {
+                    newServiceWorker.postMessage({ type: 'SKIP_WAITING' });
+                    setTimeout(() => window.location.reload(true), 500);
+                }
+            });
+        }
+    };
+</script>
 
     <script type="module">
+	
+	
+	
+	    // ================================================
+    // VERIFICACIÓN DE VERSIÓN - AÑADIR AL INICIO
+    // ================================================
+    const EXPECTED_VERSION = '1.3.1';
+    const currentVersion = localStorage.getItem('app_version');
+    
+    if (currentVersion !== EXPECTED_VERSION) {
+        console.log('🔁 Nueva versión detectada:', EXPECTED_VERSION, '(anterior:', currentVersion, ')');
+        
+        // Limpiar cachés antiguas
+        if ('caches' in window) {
+            caches.keys().then(names => {
+                console.log('🧹 Limpiando', names.length, 'cachés antiguas');
+                names.forEach(name => {
+                    if (!name.includes('gestor-permisos-v1.3.1')) { // Mantener solo la actual
+                        console.log('🗑️ Eliminando caché:', name);
+                        caches.delete(name);
+                    }
+                });
+            }).catch(err => console.log('Error limpiando cachés:', err));
+        }
+        
+        // Mantener solo datos esenciales en localStorage
+        const essentialKeys = ['githubToken', 'schoolConfig', 'schoolRequests'];
+        const allKeys = Object.keys(localStorage);
+        let removedCount = 0;
+        
+        allKeys.forEach(key => {
+            if (!essentialKeys.includes(key) && key !== 'app_version') {
+                localStorage.removeItem(key);
+                removedCount++;
+            }
+        });
+        
+        console.log('🧹 Limpiados', removedCount, 'items de localStorage');
+        
+        // Guardar nueva versión
+        localStorage.setItem('app_version', EXPECTED_VERSION);
+        
+        // Si es primera vez o cambio de versión mayor, recargar
+        if (currentVersion && !currentVersion.startsWith('1.3.')) {
+            console.log('🔄 Recargando para aplicar nueva versión...');
+            setTimeout(() => window.location.reload(), 500);
+        }
+    }
+	
+	
+	
         window.app = {
             config: { startYear: new Date().getFullYear(), teachers: [], localHolidays: [], provHolidays: [], nonTeachingDays: [] },
             requests: [], 
