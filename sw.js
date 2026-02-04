@@ -1,13 +1,12 @@
-// Nombre de la caché
-const CACHE_NAME = 'gestor-permisos-v1.2';
-const APP_VERSION = '1.2.0';
+// Nombre de la caché - CAMBIA ESTE NÚMERO CADA VEZ QUE ACTUALICES
+const CACHE_NAME = 'gestor-permisos-v1.4.1';  // <-- Cambia el número de versión
+const APP_VERSION = '1.4.1';
 
-// Archivos a cachear (URLs absolutas para los recursos de CDN)
+// Archivos a cachear
 const ARCHIVOS_CACHE = [
-  './',  // Página principal
+  './',
   './index.html',
-  
-  // Recursos de CDN que queremos cachear
+  // Mantén los recursos de CDN aquí
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js',
   'https://unpkg.com/lucide@latest',
@@ -16,123 +15,144 @@ const ARCHIVOS_CACHE = [
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js'
 ];
 
-// Evento 'install': se dispara cuando se instala el service worker
+// --- ESTRATEGIA DE ACTUALIZACIÓN MEJORADA ---
+
+// Evento 'install'
 self.addEventListener('install', event => {
-  console.log('Service Worker: Instalando...');
+  console.log('[SW] Instalando versión:', APP_VERSION);
   
-  // Esperamos a que se abra la caché y se añadan los archivos
+  // Fuerza la activación inmediata, incluso con pestañas abiertas
+  self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Service Worker: Cacheando archivos esenciales');
+        console.log('[SW] Cacheando archivos esenciales');
         return cache.addAll(ARCHIVOS_CACHE);
       })
       .then(() => {
-        console.log('Service Worker: Instalación completada');
-        // Forzar que el service worker se active inmediatamente
-        return self.skipWaiting();
+        console.log('[SW] Instalación completada');
+        return self.skipWaiting(); // Doble seguridad
       })
   );
 });
 
-// Evento 'activate': se dispara cuando el service worker se activa
+// Evento 'activate'
 self.addEventListener('activate', event => {
-  console.log('Service Worker: Activado');
+  console.log('[SW] Activado versión:', APP_VERSION);
   
-  // Eliminar cachés antiguas si existen
   event.waitUntil(
+    // Limpiar todas las cachés antiguas
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Service Worker: Borrando caché antigua', cacheName);
+            console.log('[SW] Borrando caché antigua:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      // Reclamar control sobre todas las pestañas abiertas
+      // Reclamar control inmediatamente sobre todas las pestañas
       return self.clients.claim();
+    }).then(() => {
+      // Enviar mensaje a todas las pestañas para recargar
+      return self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            version: APP_VERSION
+          });
+        });
+      });
     })
   );
 });
 
-// Evento 'fetch': intercepta las peticiones de red
+// Evento 'fetch' - ESTRATEGIA DE ACTUALIZACIÓN AGGRESIVA
 self.addEventListener('fetch', event => {
-  // Evitar peticiones a chrome-extension://
-  if (event.request.url.startsWith('chrome-extension://')) {
-    return;
-  }
-  
-  // Para las peticiones a la API de GitHub, no usar caché
-  if (event.request.url.includes('api.github.com')) {
-    // Network only para GitHub API
-    event.respondWith(fetch(event.request));
-    return;
-  }
-  
-  // Para las peticiones de CDNs externos, network-first
-  if (event.request.url.includes('cdn.jsdelivr.net') || 
-      event.request.url.includes('cdnjs.cloudflare.com') ||
-      event.request.url.includes('unpkg.com')) {
+  // Para index.html, siempre intenta red primero (para obtener actualizaciones)
+  if (event.request.url.includes('/index.html') || 
+      event.request.mode === 'navigate') {
+    console.log('[SW] Fetch para HTML, usando network-first');
+    
     event.respondWith(
       fetch(event.request)
         .then(response => {
-          // Si la respuesta es válida, la devolvemos
+          // Si hay respuesta de red, actualiza la caché
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME)
+            .then(cache => cache.put(event.request, responseClone));
           return response;
         })
         .catch(() => {
-          // Si falla, intentamos devolver de la caché
+          // Si falla la red, usa la caché
           return caches.match(event.request);
         })
     );
     return;
   }
   
-  // Para el resto de recursos (principalmente nuestra app): cache-first
+  // Para recursos estáticos de CDN, usa cache-first pero con validación
+  if (event.request.url.includes('cdn.jsdelivr.net') || 
+      event.request.url.includes('cdnjs.cloudflare.com') ||
+      event.request.url.includes('unpkg.com')) {
+    
+    event.respondWith(
+      caches.match(event.request)
+        .then(cachedResponse => {
+          // Siempre hacer fetch en segundo plano para actualizar
+          const fetchPromise = fetch(event.request)
+            .then(networkResponse => {
+              // Actualizar caché con nueva versión
+              const responseClone = networkResponse.clone();
+              caches.open(CACHE_NAME)
+                .then(cache => cache.put(event.request, responseClone));
+              return networkResponse;
+            })
+            .catch(() => {}); // Ignorar errores en fetch de fondo
+          
+          // Devolver caché inmediatamente, pero actualizar en segundo plano
+          return cachedResponse || fetchPromise;
+        })
+    );
+    return;
+  }
+  
+  // Para API de GitHub, network only
+  if (event.request.url.includes('api.github.com')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  
+  // Para el resto, cache-first normal
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Si está en caché, lo devolvemos
-        if (response) {
-          return response;
-        }
-        
-        // Si no está en caché, hacemos la petición a red
-        return fetch(event.request)
-          .then(response => {
-            // Verificamos que la respuesta sea válida
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-            
-            // Clonamos la respuesta porque sólo se puede consumir una vez
-            const responseToCache = response.clone();
-            
-            // Abrimos la caché y guardamos la respuesta
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
-            
-            return response;
-          })
-          .catch(() => {
-            // Si falla la red y no tenemos el recurso en caché,
-            // podríamos devolver una página de error personalizada
-            // Por ahora, simplemente devolvemos undefined
-            console.log('Service Worker: Error en fetch para', event.request.url);
-          });
+        return response || fetch(event.request);
       })
   );
 });
 
-// Evento 'message': para comunicación desde la página web
+// Escuchar mensajes desde la página web
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  
+  if (event.data && event.data.type === 'CHECK_UPDATE') {
+    // Verificar actualizaciones
+    self.registration.update()
+      .then(() => {
+        console.log('[SW] Actualización verificada');
+      });
+  }
 });
 
-// Evento 'sync': para sincronización en segundo plano
-self.addEventListener('sync', event
+// Verificar actualizaciones cada 1 hora
+self.addEventListener('periodicsync', event => {
+  if (event.tag === 'check-updates') {
+    console.log('[SW] Verificando actualizaciones periódicas');
+    self.registration.update();
+  }
+});
