@@ -1,6 +1,6 @@
 {
-  "name": "Gestor de Asuntos Propios",
-  "short_name": "Gestor Permisos P27",
+  "name": "Gestor de Permisos P27",
+  "short_name": "Permisos IES",
   "description": "Aplicación para gestión de permisos escolares",
   "start_url": "./index.html",
   "display": "standalone",
