@@ -1962,8 +1962,37 @@
             const opt1 = document.getElementById('opt-paid-teaching');
             const opt2 = document.getElementById('opt-paid-non-teaching');
             const bulk = document.getElementById('bulk-action-container');
-            if (isN) { opt1.classList.add('hidden'); opt2.classList.remove('hidden'); bulk.classList.remove('hidden'); } 
-            else { opt1.classList.remove('hidden'); opt2.classList.add('hidden'); bulk.classList.add('hidden'); }
+            
+            // Obtener los radio buttons
+            const radio1 = document.getElementById('rt1');
+            const radio2 = document.getElementById('rt2');
+            const radio3 = document.getElementById('rt3');
+            
+            if (isN) {
+                opt1.classList.add('hidden');
+                opt2.classList.remove('hidden');
+                bulk.classList.remove('hidden');
+                // Establecer "Retribuido NO LECTIVO" como seleccionado por defecto
+                radio2.checked = true;
+            } else {
+                opt1.classList.remove('hidden');
+                opt2.classList.add('hidden');
+                bulk.classList.add('hidden');
+                // Establecer "Retribuido LECTIVO" como seleccionado por defecto
+                radio1.checked = true;
+            }
+            
+            // Asegurarse de que solo un radio esté marcado
+            if (isN) {
+                radio1.checked = false;
+                radio2.checked = true;
+                radio3.checked = false;
+            } else {
+                radio1.checked = true;
+                radio2.checked = false;
+                radio3.checked = false;
+            }
+            
             const sel = document.getElementById('req-teacher-select'); sel.innerHTML='<option value="">-- Selecciona --</option>';
             window.app.config.teachers.forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.innerText=t.name; sel.appendChild(o); });
             const c = document.getElementById('request-list-container'); c.innerHTML='';
@@ -2002,6 +2031,13 @@
         window.app.submitRequest = () => {
             const tid = document.getElementById('req-teacher-select').value; if(!tid) return alert('Selecciona profesor');
             const type = document.querySelector('input[name="reqType"]:checked')?.value;
+            
+            // CORRECCIÓN 1: Verificar que se haya seleccionado un tipo de permiso
+            if (!type) {
+                alert('Debes seleccionar un tipo de permiso');
+                return;
+            }
+            
             const ds = window.app.selectedDate; const isN = (window.app.config.nonTeachingDays||[]).includes(ds);
             if(type==='paid_teaching' && isN) return alert('Error: Tipo lectivo en día no lectivo.');
             if(type==='paid_non_teaching' && !isN) return alert('Error: Tipo no lectivo en día lectivo.');
@@ -2017,6 +2053,13 @@
         window.app.submitBulkRequest = () => {
             if(!confirm('¿Añadir a todo el claustro disponible?')) return;
             const ds = window.app.selectedDate; const type = document.querySelector('input[name="reqType"]:checked')?.value;
+            
+            // CORRECCIÓN 2: Verificar que se haya seleccionado un tipo de permiso también para bulk
+            if (!type) {
+                alert('Debes seleccionar un tipo de permiso');
+                return;
+            }
+            
             let add=0; 
             window.app.config.teachers.forEach(t => {
                 if(window.app.requests.find(r=>r.date===ds && r.teacherId===t.id)) return;
