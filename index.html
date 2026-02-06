@@ -171,6 +171,49 @@
             opacity: 0.6;
             pointer-events: none;
         }
+
+        /* Estilos para el indicador de última actualización */
+        .last-update-indicator {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+            animation: fadeInUp 0.5s ease-out;
+            max-width: 300px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .last-update-indicator.fade-out {
+            animation: fadeOutDown 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeOutDown {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+        }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -182,11 +225,26 @@
 
     <div id="custom-tooltip"></div>
 
+    <!-- Indicador de última actualización (se mostrará al inicio) -->
+    <div id="last-update-indicator" class="last-update-indicator hidden">
+        <div class="d-flex align-items-center gap-1">
+            <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+            <span id="last-update-text"></span>
+        </div>
+    </div>
+
     <header class="bg-blue-700 text-white py-3 shadow">
         <div class="container-custom d-flex justify-content-between align-items-center">
-            <h1 class="h4 fw-bold mb-0 d-flex align-items-center gap-2">
-                <i data-lucide="calendar"></i> Gestión de Asuntos Propios
-            </h1>
+            <div class="d-flex align-items-center gap-3">
+                <h1 class="h4 fw-bold mb-0 d-flex align-items-center gap-2">
+                    <i data-lucide="calendar"></i> Gestión de Asuntos Propios
+                </h1>
+                <!-- Botón de Ayuda -->
+                <button onclick="window.app.openHelpModal()" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1">
+                    <i data-lucide="help-circle" style="width: 16px; height: 16px;"></i>
+                    <span class="d-none d-md-inline">¿Cómo funciona?</span>
+                </button>
+            </div>
             <div id="auth-status" class="badge bg-dark bg-opacity-50 font-monospace px-3 py-2 fw-normal">Modo Local</div>
         </div>
     </header>
@@ -257,7 +315,20 @@
                                         <input type="password" id="input-github-token" placeholder="ghp_xxxxxxxxxxxx..." class="form-control font-monospace text-muted flex-grow-1">
                                         <button onclick="window.app.saveGithubToken()" class="btn btn-dark fw-bold btn-sm">Validar y Guardar</button>
                                     </div>
-                                    <div id="github-msg" class="small fw-bold text-secondary">Token no configurado.</div>
+                                    
+                                    <!-- NUEVO: Opción para cargar token desde archivo .txt -->
+                                    <div class="mt-3">
+                                        <label class="small fw-bold text-secondary mb-1 d-block">O carga el token desde un archivo .txt:</label>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <label for="token-file-input" class="btn btn-outline-secondary btn-sm cursor-pointer mb-0">
+                                                <i data-lucide="upload" style="width:14px"></i> Seleccionar archivo
+                                            </label>
+                                            <input type="file" id="token-file-input" accept=".txt" class="hidden" onchange="window.app.loadTokenFromFile(event)">
+                                            <span id="token-file-name" class="small text-muted flex-grow-1 truncate" style="max-width: 200px;">Ningún archivo seleccionado</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="github-msg" class="small fw-bold text-secondary mt-2">Token no configurado.</div>
                                 </div>
                             </div>
                         </div>
@@ -718,6 +789,70 @@
         </div>
     </div>
 
+    <!-- MODAL NUEVO: Para mostrar la ayuda de la aplicación -->
+    <div id="modal-help" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-3 hidden">
+        <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 600px; max-height: 90vh;">
+            <div class="bg-blue-700 text-white p-3 d-flex justify-content-between align-items-center rounded-top">
+                <h3 class="h6 fw-bold mb-0 d-flex align-items-center gap-2"><i data-lucide="help-circle"></i> ¿Cómo funciona esta aplicación?</h3>
+                <button onclick="window.app.closeModal('modal-help')" class="btn btn-sm text-white p-0"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-4 overflow-auto">
+                <div class="mb-4">
+                    <p class="mb-3">Esta aplicación gestiona los permisos (asuntos propios) del profesorado de un centro educativo.</p>
+                    
+                    <h5 class="fw-bold text-blue-800 mb-2">📋 Pasos para configurar y usar la aplicación:</h5>
+                    <ol class="ps-3 mb-4">
+                        <li class="mb-2">
+                            <strong>Configura el año de inicio del curso</strong>
+                            <p class="small text-muted mb-1">En la pestaña "Configuración", ajusta el año de inicio del curso escolar (Septiembre).</p>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Añade la lista de profesorado</strong>
+                            <p class="small text-muted mb-1">Puedes añadir profesores manualmente o importar desde un archivo Excel con la lista.</p>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Configura los días especiales</strong>
+                            <p class="small text-muted mb-1">Establece festivos locales, provinciales, días no disponibles y días no lectivos.</p>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Gestiona permisos en el calendario</strong>
+                            <p class="small text-muted mb-1">En la pestaña "Calendario", haz clic en un día para añadir permisos al profesorado.</p>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Consulta informes</strong>
+                            <p class="small text-muted mb-1">Usa la pestaña "Informes" para ver resúmenes por profesor y exportar PDF.</p>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Guarda tus datos</strong>
+                            <p class="small text-muted mb-1">Guarda en local o en la nube (GitHub) para tener copias de seguridad.</p>
+                        </li>
+                    </ol>
+
+                    <h5 class="fw-bold text-blue-800 mb-2">🔐 Configuración de GitHub (Opcional)</h5>
+                    <div class="bg-blue-50 p-3 rounded border border-blue-200 mb-3">
+                        <p class="small mb-2">Para guardar en la nube necesitas un <strong>Personal Access Token (Classic)</strong> de GitHub:</p>
+                        <ol class="small ps-3 mb-0">
+                            <li class="mb-1">Ve a <a href="https://github.com/settings/tokens" target="_blank">GitHub Tokens</a></li>
+                            <li class="mb-1">Genera un nuevo token (Classic) con permisos <code>gist</code></li>
+                            <li class="mb-1">Copia el token (empieza por <code>ghp_</code>)</li>
+                            <li class="mb-1">Pégalo en la configuración o cárgalo desde un archivo .txt</li>
+                        </ol>
+                    </div>
+
+                    <h5 class="fw-bold text-blue-800 mb-2">📊 Tipos de permisos disponibles</h5>
+                    <ul class="ps-3 small mb-0">
+                        <li class="mb-1"><strong>Retribuidos Lectivos:</strong> Máximo 2 por profesor (solo en días lectivos)</li>
+                        <li class="mb-1"><strong>Retribuidos No Lectivos:</strong> Máximo 4 por profesor (solo en días no lectivos)</li>
+                        <li class="mb-1"><strong>No Retribuidos:</strong> Sin límite (cualquier día hábil)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="p-3 bg-light rounded-bottom d-flex justify-content-end">
+                <button onclick="window.app.closeModal('modal-help')" class="btn btn-primary btn-sm">Entendido</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS para los acordeones -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -1038,7 +1173,7 @@
             }
             
             // Mantener solo datos esenciales en localStorage
-            const essentialKeys = ['githubToken', 'schoolConfig', 'schoolRequests'];
+            const essentialKeys = ['githubToken', 'schoolConfig', 'schoolRequests', 'lastUpdate']; // Añadido lastUpdate
             const allKeys = Object.keys(localStorage);
             let removedCount = 0;
             
@@ -1180,6 +1315,63 @@
             lucide.createIcons();
         }
 
+        // Función para mostrar el indicador de última actualización
+        function showLastUpdateIndicator() {
+            const lastUpdate = localStorage.getItem('lastUpdate');
+            if (!lastUpdate) return;
+            
+            try {
+                const updateData = JSON.parse(lastUpdate);
+                const date = new Date(updateData.timestamp);
+                const formattedDate = date.toLocaleString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const sourceText = updateData.source === 'github' ? 'GitHub' : 'Local';
+                const indicator = document.getElementById('last-update-indicator');
+                const textElement = document.getElementById('last-update-text');
+                
+                textElement.textContent = `Última actualización: ${formattedDate} (${sourceText})`;
+                indicator.classList.remove('hidden');
+                
+                // Auto-ocultar después de 10 segundos
+                setTimeout(() => {
+                    indicator.classList.add('fade-out');
+                    setTimeout(() => {
+                        indicator.classList.add('hidden');
+                        indicator.classList.remove('fade-out');
+                    }, 500);
+                }, 10000);
+                
+                // Cerrar al hacer clic
+                indicator.onclick = () => {
+                    indicator.classList.add('fade-out');
+                    setTimeout(() => {
+                        indicator.classList.add('hidden');
+                        indicator.classList.remove('fade-out');
+                    }, 500);
+                };
+            } catch (e) {
+                console.error('Error al procesar lastUpdate:', e);
+            }
+        }
+        
+        // Función para guardar la información de última actualización
+        function saveLastUpdate(source) {
+            const updateData = {
+                timestamp: new Date().toISOString(),
+                source: source // 'local' o 'github'
+            };
+            localStorage.setItem('lastUpdate', JSON.stringify(updateData));
+            
+            // Mostrar el indicador después de guardar
+            showLastUpdateIndicator();
+        }
+
         async function init() {
             try {
                 const lc = localStorage.getItem('schoolConfig');
@@ -1189,6 +1381,9 @@
                 window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name));
                 if(window.app.githubToken) document.getElementById('input-github-token').value = window.app.githubToken;
                 renderAll();
+                
+                // Mostrar indicador de última actualización al iniciar
+                showLastUpdateIndicator();
                 
                 // Verificar conflictos al iniciar
                 const conflicts = findDateConflicts();
@@ -1228,6 +1423,27 @@
             console.log("Función obsoleta - ahora usamos acordeón de Bootstrap");
         };
 
+        // NUEVA FUNCIÓN: Cargar token desde archivo .txt
+        window.app.loadTokenFromFile = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const token = e.target.result.trim();
+                document.getElementById('input-github-token').value = token;
+                document.getElementById('token-file-name').textContent = file.name;
+                showNotification('Token cargado desde archivo', 'info');
+            };
+            reader.readAsText(file);
+        };
+
+        // NUEVA FUNCIÓN: Abrir modal de ayuda
+        window.app.openHelpModal = function() {
+            document.getElementById('modal-help').classList.remove('hidden');
+            lucide.createIcons();
+        };
+
         window.app.saveGithubToken = async () => {
             const t = document.getElementById('input-github-token').value.trim();
             if(!t) return alert("Introduce un token válido");
@@ -1251,6 +1467,9 @@
                 const resp = await fetch('https://api.github.com/gists', { method: 'POST', headers: {'Authorization': `token ${window.app.githubToken}`}, body: JSON.stringify(body)});
                 if(!resp.ok) throw new Error(`Error al guardar: ${resp.status}`);
                 showNotification('¡Datos guardados en GitHub!');
+                
+                // Guardar información de última actualización
+                saveLastUpdate('github');
             } catch (e) { console.error(e); showNotification(e.message, 'error'); }
         };
 
@@ -1387,7 +1606,7 @@
                         <li class="list-group-item text-center text-muted py-4">
                             <i data-lucide="folder-x" style="width: 24px; height: 24px;" class="mb-2"></i>
                             <div>No se encontraron copias de seguridad</div>
-                        </li>
+                    </li>
                     `;
                     lucide.createIcons();
                 }
@@ -1423,6 +1642,9 @@
                     window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name));
                     renderAll(); renderCalendar(); window.app.renderSummaryTable(); window.app.saveLocal();
                     showNotification('¡Restaurado correctamente!');
+                    
+                    // Guardar información de última actualización
+                    saveLastUpdate('github');
                     
                     // Verificar conflictos después de cargar
                     const conflicts = findDateConflicts();
@@ -1565,6 +1787,9 @@
                     window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name)); 
                     renderAll(); renderCalendar(); window.app.saveLocal(); showNotification('Datos importados');
                     
+                    // Guardar información de última actualización
+                    saveLastUpdate('local');
+                    
                     // Verificar conflictos después de importar
                     const conflicts = findDateConflicts();
                     if (conflicts.length > 0) {
@@ -1581,6 +1806,9 @@
             localStorage.setItem('schoolConfig', JSON.stringify(window.app.config));
             localStorage.setItem('schoolRequests', JSON.stringify(window.app.requests));
             showNotification('Datos guardados en Local');
+            
+            // Guardar información de última actualización
+            saveLastUpdate('local');
         };
 
         window.app.handleExcelUpload = async (e) => {
