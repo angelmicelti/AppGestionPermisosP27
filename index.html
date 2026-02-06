@@ -724,7 +724,7 @@
 <!-- PWA: Service Worker Registration -->
 <script>
     // Control de versiones - DEBE COINCIDIR con sw.js
-    const APP_VERSION = '1.6.1';
+    const APP_VERSION = '1.7.1';
     let newServiceWorker = null;
     let registrationInstance = null;
     let isUpdating = false;
@@ -1018,7 +1018,7 @@
         // ================================================
         // VERIFICACIÓN DE VERSIÓN - AÑADIR AL INICIO
         // ================================================
-        const EXPECTED_VERSION = '1.6.1';
+        const EXPECTED_VERSION = '1.7.1';
         const currentVersion = localStorage.getItem('app_version');
         
         if (currentVersion !== EXPECTED_VERSION) {
@@ -1029,7 +1029,7 @@
                 caches.keys().then(names => {
                     console.log('🧹 Limpiando', names.length, 'cachés antiguas');
                     names.forEach(name => {
-                        if (!name.includes('gestor-permisos-v1.6.1')) { // Mantener solo la actual
+                        if (!name.includes('gestor-permisos-v1.7.1')) { // Mantener solo la actual
                             console.log('🗑️ Eliminando caché:', name);
                             caches.delete(name);
                         }
