@@ -1,0 +1,2733 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Asuntos Propios</title>
+    
+    <link rel="icon" type="image/x-icon" href="icons/favicon.ico">
+
+    <!-- PWA: Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- PWA: Theme Color -->
+    <meta name="theme-color" content="#2563EB">
+    
+    <!-- PWA: Apple Touch Icon (para iOS) -->
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Gestor Permisos">
+    
+    <!-- PWA: Iconos para diferentes dispositivos -->
+    <link rel="icon" type="image/png" href="icons/icon-72.png" sizes="72x72">
+    <link rel="icon" type="image/png" href="icons/icon-96.png" sizes="96x96">
+    <link rel="icon" type="image/png" href="icons/icon-128.png" sizes="128x128">
+    <link rel="icon" type="image/png" href="icons/icon-144.png" sizes="144x144">
+    <link rel="icon" type="image/png" href="icons/icon-152.png" sizes="152x152">
+    <link rel="icon" type="image/png" href="icons/icon-192.png" sizes="192x192">
+    <link rel="icon" type="image/png" href="icons/icon-384.png" sizes="384x384">
+    <link rel="icon" type="image/png" href="icons/icon-512.png" sizes="512x512">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        /* --- ESTILOS VISUALES (Diseño Original adaptado a Bootstrap) --- */
+        
+        .hidden { display: none !important; } /* Utilidad crítica para la lógica original */
+        
+        body { background-color: #f9fafb; font-family: system-ui, -apple-system, sans-serif; color: #1f2937; }
+        
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Pestañas de Navegación */
+        .tab-btn { border-bottom: 2px solid transparent; cursor: pointer; color: #6b7280; transition: all 0.2s; background: none; border: none; width: 100%; padding: 1rem; font-weight: 500; }
+        .tab-btn:hover { background-color: #f9fafb; }
+        .tab-active { color: #2563EB; border-bottom-color: #2563EB !important; background-color: #EFF6FF; }
+        .tab-inactive { color: #6B7280; }
+
+        /* Calendario: Grid fijo de 7 columnas */
+        .calendar-grid-7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e5e7eb; border: 1px solid #e5e7eb; }
+        .calendar-cell { background-color: white; min-height: 4.5rem; display: flex; flex-direction: column; align-items: center; padding-top: 0.25rem; cursor: pointer; transition: background-color 0.2s; position: relative; }
+        .calendar-cell:hover { background-color: #EFF6FF; }
+
+        /* Colores Estados Calendario */
+        .cell-weekend { background-color: #FEF2F2 !important; cursor: not-allowed; opacity: 0.8; } 
+        .cell-local { background-color: #F3E8FF !important; cursor: not-allowed; } 
+        .cell-prov { background-color: #FFEDD5 !important; cursor: not-allowed; } 
+        .cell-unavailable { background-color: #F1F5F9 !important; cursor: not-allowed; }  /* NUEVO: Días no disponibles */
+        .cell-non-teaching { background-color: #FEF9C3 !important; } 
+        .cell-active { box-shadow: inset 0 0 0 2px #3B82F6; }
+
+        /* Loader */
+        #app-loader { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #2563EB; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Tooltip */
+        #custom-tooltip { position: fixed; z-index: 10000; background-color: rgba(17, 24, 39, 0.95); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; pointer-events: none; display: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-width: 250px; white-space: pre-line; line-height: 1.4; }
+
+        /* Colores Tailwind-like */
+        .text-blue-800 { color: #1e40af !important; }
+        .bg-blue-700 { background-color: #1d4ed8 !important; }
+        .bg-blue-50 { background-color: #eff6ff !important; }
+        .bg-green-600 { background-color: #16a34a !important; }
+        .text-purple-700 { color: #7e22ce !important; }
+        .bg-purple-100 { background-color: #f3e8ff !important; }
+        .text-orange-700 { color: #c2410c !important; }
+        .bg-orange-100 { background-color: #ffedd5 !important; }
+        .text-yellow-700 { color: #a16207 !important; }
+        .bg-yellow-100 { background-color: #fef9c3 !important; }
+        .text-gray-700 { color: #374151 !important; } /* NUEVO: Para días no disponibles */
+        .bg-gray-100 { background-color: #f3f4f6 !important; } /* NUEVO: Para días no disponibles */
+        
+        .container-custom { max-width: 1152px; margin: 0 auto; padding: 0 1rem; }
+        
+        /* Ajustes UI */
+        .form-control, .form-select { border-radius: 0.375rem; border-color: #d1d5db; padding: 0.5rem; }
+        .form-control:focus, .form-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); }
+        .btn { border-radius: 0.375rem; padding: 0.5rem 1rem; font-weight: 500; border: none; }
+        .card { border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); }
+        .table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #4b5563; background-color: #f3f4f6; }
+        
+        /* Cambiar el color de fondo y texto del acordeón cuando está cerrado */
+        .accordion-button {
+            background-color: #eff6ff !important;  /* Azul claro */
+            color: #1e40af !important;            /* Azul oscuro para el texto */
+            font-weight: 600;
+        }
+
+        /* Cambiar el color de fondo y texto del acordeón cuando está abierto */
+        .accordion-button:not(.collapsed) {
+            background-color: #3b82f6 !important;  /* Azul más intenso */
+            color: white !important;                /* Texto blanco cuando está abierto */
+            box-shadow: inset 0 -1px 0 rgba(0,0,0,.125);
+        }
+
+        /* Cambiar el color del icono de flecha del acordeón */
+        .accordion-button::after {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%231e40af'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e") !important;
+        }
+
+        /* Cambiar el color del icono de flecha cuando el acordeón está abierto */
+        .accordion-button:not(.collapsed)::after {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e") !important;
+        }
+
+        /* Cambiar el borde del acordeón cuando tiene el foco */
+        .accordion-button:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+        }
+
+        /* Para mantener el color azul al pasar el ratón (hover) */
+        .accordion-button:hover {
+            background-color: #dbeafe !important;  /* Azul un poco más claro al hover */
+        }
+        
+        /* Estilos para el modal de conflictos */
+        .conflict-day-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background-color: #fef3f2;
+        }
+        
+        .conflict-day-item.resolved {
+            background-color: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        
+        /* Estilos para la lista de gists */
+        .gist-item {
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .gist-item:hover {
+            background-color: #f8f9fa;
+            border-left-color: #2563EB;
+        }
+        
+        .delete-gist-btn {
+            opacity: 0.5;
+            transition: all 0.2s;
+        }
+        
+        .delete-gist-btn:hover {
+            opacity: 1;
+            color: #dc3545 !important;
+        }
+        
+        /* Estilo para indicador de eliminando */
+        .deleting {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* Estilos para el indicador de última actualización */
+        .last-update-indicator {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+            animation: fadeInUp 0.5s ease-out;
+            max-width: 300px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .last-update-indicator.fade-out {
+            animation: fadeOutDown 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeOutDown {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+        }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <div id="app-loader">
+        <div class="spinner mb-4"></div>
+        <h2 class="h5 text-secondary fw-bold">Cargando sistema...</h2>
+    </div>
+
+    <div id="custom-tooltip"></div>
+
+    <!-- Indicador de última actualización (se mostrará al inicio) -->
+    <div id="last-update-indicator" class="last-update-indicator hidden">
+        <div class="d-flex align-items-center gap-1">
+            <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+            <span id="last-update-text"></span>
+        </div>
+    </div>
+
+    <header class="bg-blue-700 text-white py-3 shadow">
+        <div class="container-custom d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <h1 class="h4 fw-bold mb-0 d-flex align-items-center gap-2">
+                    <i data-lucide="calendar"></i> Gestión de Asuntos Propios
+                </h1>
+                <!-- Botón de Ayuda -->
+                <button onclick="window.app.openHelpModal()" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1">
+                    <i data-lucide="help-circle" style="width: 16px; height: 16px;"></i>
+                    <span class="d-none d-md-inline">¿Cómo funciona?</span>
+                </button>
+            </div>
+            <div id="auth-status" class="badge bg-dark bg-opacity-50 font-monospace px-3 py-2 fw-normal">Modo Local</div>
+        </div>
+    </header>
+
+    <nav class="bg-white shadow-sm sticky-top z-1">
+        <div class="container-custom d-flex">
+            <button onclick="window.app.switchTab('config')" id="tab-config" class="tab-btn tab-active flex-fill">
+                <div class="d-flex justify-content-center align-items-center gap-2"><i data-lucide="settings" style="width:16px"></i> Configuración</div>
+            </button>
+            <button onclick="window.app.switchTab('calendar')" id="tab-calendar" class="tab-btn tab-inactive flex-fill">
+                <div class="d-flex justify-content-center align-items-center gap-2"><i data-lucide="calendar" style="width:16px"></i> Calendario</div>
+            </button>
+            <button onclick="window.app.switchTab('stats')" id="tab-stats" class="tab-btn tab-inactive flex-fill">
+                <div class="d-flex justify-content-center align-items-center gap-2"><i data-lucide="bar-chart-2" style="width:16px"></i> Informes</div>
+            </button>
+        </div>
+    </nav>
+
+    <main class="container-custom py-4 flex-grow-1 position-relative d-flex flex-column">
+        
+        <div id="notification-area" class="position-fixed bottom-0 end-0 p-4 z-3 hidden">
+            <div id="notification-msg" class="alert shadow-lg fw-bold text-white mb-0"></div>
+        </div>
+
+        <div id="view-config" class="fade-in pb-5">
+            <!-- Acordeón 1: Configuración Nube (GitHub) -->
+            <div class="accordion" id="accordionConfig">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="github" style="width:18px"></i>
+                                <span class="fw-bold">1. Configuración Nube (GitHub)</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white mb-0 border-start border-4 border-dark">
+                                <div class="card-body p-3">
+                                    <p class="small text-secondary mb-2">Para guardar en la nube, introduce tu <strong>Personal Access Token (Classic)</strong>.</p>
+                                    <div class="d-flex gap-2 mb-2">
+                                        <input type="password" id="input-github-token" placeholder="ghp_xxxxxxxxxxxx..." class="form-control font-monospace text-muted flex-grow-1">
+                                        <button onclick="window.app.saveGithubToken()" class="btn btn-dark fw-bold btn-sm">Validar y Guardar</button>
+                                    </div>
+                                    
+                                    <!-- NUEVO: Opción para cargar token desde archivo .txt -->
+                                    <div class="mt-3">
+                                        <label class="small fw-bold text-secondary mb-1 d-block">O carga el token desde un archivo .txt:</label>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <label for="token-file-input" class="btn btn-outline-secondary btn-sm cursor-pointer mb-0">
+                                                <i data-lucide="upload" style="width:14px"></i> Seleccionar archivo
+                                            </label>
+                                            <input type="file" id="token-file-input" accept=".txt" class="hidden" onchange="window.app.loadTokenFromFile(event)">
+                                            <span id="token-file-name" class="small text-muted flex-grow-1 truncate" style="max-width: 200px;">Ningún archivo seleccionado</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="github-msg" class="small fw-bold text-secondary mt-2">Token no configurado.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 2: Datos del Curso -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="calendar" style="width:18px"></i>
+                                <span class="fw-bold">2. Datos del Curso</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white mb-0">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center gap-3 flex-wrap mt-1">
+                                        <label class="fw-medium">Año de inicio (Septiembre):</label>
+                                        <input type="number" id="input-start-year" class="form-control w-auto" style="width: 120px;" onchange="window.app.updateConfig('year')">
+                                        <span class="text-secondary" id="text-end-year">→ Finaliza en Junio de ...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 3: Profesorado -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="users" style="width:18px"></i>
+                                <span class="fw-bold">3. Profesorado</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white h-100">
+                                <div class="card-body p-3 d-flex flex-column">
+                                    <form onsubmit="window.app.addTeacherManual(event)" class="d-flex gap-2 mb-3">
+                                        <input type="text" id="input-new-teacher" placeholder="Nombre manual..." class="form-control form-control-sm">
+                                        <button type="submit" class="btn bg-green-600 text-white btn-sm hover:opacity-90"><i data-lucide="plus" style="width:16px"></i></button>
+                                    </form>
+                                    
+                                    <div class="mb-3 p-3 bg-blue-50 rounded border border-primary-subtle">
+                                        <div class="d-flex align-items-center gap-2 mb-2 text-primary fw-medium small">
+                                            <i data-lucide="file-spreadsheet" style="width:16px"></i><span>Importar Excel</span>
+                                        </div>
+                                        <label class="btn btn-light bg-white border w-100 btn-sm d-flex align-items-center justify-content-center gap-2 text-primary">
+                                            <i data-lucide="upload" style="width: 14px;"></i> Seleccionar archivo
+                                            <input type="file" accept=".xlsx, .xls" class="hidden" onchange="window.app.handleExcelUpload(event)">
+                                        </label>
+                                    </div>
+                                    <div class="flex-grow-1 d-flex flex-column overflow-hidden">
+                                        <span id="teacher-count" class="small text-secondary fw-bold text-uppercase mb-2 d-block" style="font-size: 0.7rem;">Listado (0)</span>
+                                        <ul id="list-teachers" class="list-group list-group-flush overflow-auto border-top" style="max-height: 240px;"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 4: Festivos Locales -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="flag" style="width:18px"></i>
+                                <span class="fw-bold">4. Festivos Locales</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white h-100">
+                                <div class="card-body p-3 d-flex flex-column gap-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <button onclick="window.app.clearHolidays('local')" class="btn btn-link text-danger p-0 text-decoration-underline small me-2" style="font-size:0.75rem">Borrar todos</button>
+                                            <button onclick="window.app.openDateModal('local')" class="btn btn-sm bg-purple-100 text-purple-700 fw-bold py-0 px-2">+ Añadir</button>
+                                        </div>
+                                    </div>
+                                    <div id="list-local-holidays" class="d-flex flex-wrap gap-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 5: Festivos Provinciales -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="map-pin" style="width:18px"></i>
+                                <span class="fw-bold">5. Festivos Provinciales</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseFive" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white h-100">
+                                <div class="card-body p-3 d-flex flex-column gap-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <button onclick="window.app.clearHolidays('provincial')" class="btn btn-link text-danger p-0 text-decoration-underline small me-2" style="font-size:0.75rem">Borrar todos</button>
+                                            <button onclick="window.app.openDateModal('provincial')" class="btn btn-sm bg-orange-100 text-orange-700 fw-bold py-0 px-2">+ Añadir</button>
+                                        </div>
+                                    </div>
+                                    <div id="list-prov-holidays" class="d-flex flex-wrap gap-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 6: Días No Disponibles -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSix" aria-expanded="false" aria-controls="collapseSix">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="x-circle" style="width:18px"></i>
+                                <span class="fw-bold">6. Días No Disponibles</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseSix" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white h-100">
+                                <div class="card-body p-3 d-flex flex-column gap-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <button onclick="window.app.clearHolidays('unavailable')" class="btn btn-link text-danger p-0 text-decoration-underline small me-2" style="font-size:0.75rem">Borrar todos</button>
+                                            <button onclick="window.app.openDateModal('unavailable')" class="btn btn-sm bg-gray-100 text-gray-700 fw-bold py-0 px-2">+ Añadir</button>
+                                        </div>
+                                    </div>
+                                    <div id="list-unavailable-days" class="d-flex flex-wrap gap-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 7: Días No Lectivos -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSeven" aria-expanded="false" aria-controls="collapseSeven">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="book-x" style="width:18px"></i>
+                                <span class="fw-bold">7. Días No Lectivos</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseSeven" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white h-100">
+                                <div class="card-body p-3 d-flex flex-column gap-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <button onclick="window.app.clearHolidays('nonTeaching')" class="btn btn-link text-danger p-0 text-decoration-underline small me-2" style="font-size:0.75rem">Borrar todos</button>
+                                            <button onclick="window.app.openDateModal('nonTeaching')" class="btn btn-sm bg-yellow-100 text-yellow-700 fw-bold py-0 px-2">+ Añadir Tramo</button>
+                                        </div>
+                                    </div>
+                                    <div id="list-non-teaching-days" class="d-flex flex-wrap gap-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 8: Eliminar Permisos -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEight" aria-expanded="false" aria-controls="collapseEight">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="trash-2" style="width:18px"></i>
+                                <span class="fw-bold">8. Eliminar Permisos Almacenados</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseEight" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white border border-danger-subtle">
+                                <div class="card-body p-3">
+                                    <div class="bg-danger bg-opacity-10 p-3 rounded">
+                                        <p class="text-danger small fw-bold mb-2">Selecciona los tipos de permisos que deseas eliminar definitivamente:</p>
+                                        <div class="d-flex flex-wrap gap-3 mb-3">
+                                            <label class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded border cursor-pointer">
+                                                <input class="form-check-input mt-0" type="checkbox" id="del-type-paid-teaching">
+                                                <span class="small">Retribuidos Lectivos</span>
+                                            </label>
+                                            <label class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded border cursor-pointer">
+                                                <input class="form-check-input mt-0" type="checkbox" id="del-type-paid-non-teaching">
+                                                <span class="small">Retribuidos No Lectivos</span>
+                                            </label>
+                                            <label class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded border cursor-pointer">
+                                                <input class="form-check-input mt-0" type="checkbox" id="del-type-unpaid">
+                                                <span class="small">No Retribuidos</span>
+                                            </label>
+                                        </div>
+                                        <button onclick="window.app.bulkDeleteRequests()" class="btn btn-danger btn-sm fw-bold d-flex align-items-center gap-2 shadow-sm">
+                                            <i data-lucide="trash" style="width:16px"></i> Eliminar seleccionados
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 9: Reiniciar base de datos -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNine" aria-expanded="false" aria-controls="collapseNine">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="database" style="width:18px"></i>
+                                <span class="fw-bold">9. Reiniciar base de datos</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseNine" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white border border-danger-subtle">
+                                <div class="card-body p-3">
+                                    <div class="bg-danger bg-opacity-10 p-3 rounded">
+                                        <p class="text-danger small fw-bold mb-3">
+                                            <i data-lucide="alert-triangle" style="width:18px" class="me-1"></i>
+                                            ADVERTENCIA: Esta acción eliminará todos los datos de la aplicación, incluyendo configuración, profesorado, festivos y solicitudes. No se puede deshacer.
+                                        </p>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <button onclick="window.app.resetDatabase()" class="btn btn-danger btn-sm fw-bold d-flex align-items-center gap-2 shadow-sm">
+                                                <i data-lucide="trash" style="width:16px"></i> Reiniciar base de datos
+                                            </button>
+                                            <button onclick="window.app.exportBackupBeforeReset()" class="btn btn-outline-danger btn-sm fw-bold d-flex align-items-center gap-2">
+                                                <i data-lucide="download" style="width:16px"></i> Exportar copia antes de reiniciar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-calendar" class="fade-in hidden">
+            <div class="bg-white p-3 rounded shadow-sm mb-4 d-flex flex-wrap gap-3 justify-content-center small text-secondary">
+                <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-danger bg-opacity-25 rounded"></div> Finde/Festivo</div>
+                <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-purple-100 rounded"></div> F. Local</div>
+                <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-orange-100 rounded"></div> F. Provincial</div>
+                <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-gray-100 border border-gray-300 rounded"></div> No Disponible</div>
+                <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-yellow-100 border border-warning rounded"></div> No Lectivo</div>
+                <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="border border-2 border-primary rounded"></div> Solicitud activa</div>
+            </div>
+            <div id="calendar-grid" class="row g-4"></div>
+        </div>
+
+        <div id="view-stats" class="fade-in hidden">
+            <div class="accordion" id="accordionStats">
+                <!-- Acordeón 1: Estado del profesorado -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStatsOne" aria-expanded="false" aria-controls="collapseStatsOne">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="users"></i>
+                                <span class="fw-bold">Estado del Profesorado</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseStatsOne" class="accordion-collapse collapse" data-bs-parent="#accordionStats">
+                        <div class="accordion-body p-0">
+                            <div class="card bg-white mb-0 shadow-sm border-0">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <h2 class="h5 text-blue-800 fw-bold mb-0 d-flex align-items-center gap-2">
+                                                <i data-lucide="users"></i> Estado del Profesorado
+                                            </h2>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <select id="summary-filter" class="form-select form-select-sm w-auto" onchange="window.app.renderSummaryTable()">
+                                                <option value="all">Ver Todos</option>
+                                                <option value="with">Con Solicitudes</option>
+                                                <option value="without">Sin Solicitudes</option>
+                                            </select>
+                                            <button onclick="window.app.exportPDF('summary')" class="btn btn-danger btn-sm d-flex align-items-center gap-2">
+                                                <i data-lucide="file-text" style="width:16px"></i> PDF
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0" id="table-summary">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="p-3">Profesor</th>
+                                                    <th class="p-3 text-center">Retribuidos Lectivos (Máx 2)</th>
+                                                    <th class="p-3 text-center">Retribuidos NO Lectivos (Máx. 4)</th>
+                                                    <th class="p-3 text-center">No Retribuidos (∞)</th>
+                                                    <th class="p-3 text-center">Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="table-summary-body"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acordeón 2: Informe Detallado -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStatsTwo" aria-expanded="false" aria-controls="collapseStatsTwo">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="file-text"></i>
+                                <span class="fw-bold">Informe Detallado</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseStatsTwo" class="accordion-collapse collapse" data-bs-parent="#accordionStats">
+                        <div class="accordion-body p-0">
+                            <div class="card bg-white shadow-sm border-0">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-4">
+                                        <h2 class="h5 text-blue-800 fw-bold d-flex align-items-center gap-2 mb-0"><i data-lucide="file-text"></i> Informe Detallado</h2>
+                                        <button onclick="window.app.exportPDF('report')" class="btn btn-danger btn-sm d-flex align-items-center gap-2"><i data-lucide="file-text" style="width:16px"></i> PDF</button>
+                                    </div>
+                                    <div class="bg-light p-3 rounded mb-4 border d-flex gap-3 align-items-end flex-wrap">
+                                        <div>
+                                            <label class="form-label small text-secondary mb-1">Desde:</label>
+                                            <input type="date" id="report-start" class="form-control" onchange="window.app.renderReportTable()">
+                                        </div>
+                                        <div>
+                                            <label class="form-label small text-secondary mb-1">Hasta:</label>
+                                            <input type="date" id="report-end" class="form-control" onchange="window.app.renderReportTable()">
+                                        </div>
+                                        <div class="ms-auto text-secondary small pb-2">Resultados: <span id="report-count" class="fw-bold">0</span></div>
+                                    </div>
+                                    <div class="table-responsive border rounded">
+                                        <table class="table table-sm mb-0" id="table-report">
+                                            <thead class="bg-blue-50 text-blue-800 small">
+                                                <tr>
+                                                    <th class="p-3">Fecha</th>
+                                                    <th class="p-3">Profesor</th>
+                                                    <th class="p-3">Tipo de Permiso</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="table-report-body"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-white shadow-sm mt-4 border">
+            <div class="card-body d-flex flex-wrap gap-2 align-items-center p-3">
+                <div class="d-flex gap-2 me-auto">
+                    <button onclick="window.app.exportJSON()" class="btn btn-primary d-flex align-items-center gap-2 btn-sm" style="background-color: #7e22ce; border-color: #7e22ce;">
+                        <i data-lucide="download" style="width:16px"></i> Exportar JSON
+                    </button>
+                    <label class="btn btn-dark d-flex align-items-center gap-2 cursor-pointer btn-sm" style="background-color: #581c87; border-color: #581c87;">
+                        <i data-lucide="upload" style="width:16px"></i> Importar JSON
+                        <input type="file" accept=".json" class="hidden" onchange="window.app.importJSON(event)">
+                    </label>
+                </div>
+                <div class="vr mx-2 d-none d-md-block"></div>
+                <button onclick="window.app.saveLocal()" class="btn btn-secondary d-flex align-items-center gap-2 btn-sm">
+                    <i data-lucide="save" style="width:16px"></i> Guardar Local
+                </button>
+                <button onclick="window.app.saveGitHub()" class="btn btn-dark d-flex align-items-center gap-2 btn-sm">
+                    <i data-lucide="cloud" style="width:16px"></i> Guardar/Actualizar Nube (GitHub)
+                </button>
+                <button onclick="window.app.loadGitHub()" class="btn btn-outline-dark d-flex align-items-center gap-2 btn-sm">
+                    <i data-lucide="download-cloud" style="width:16px"></i> Cargar Nube
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para añadir fechas (festivos, no disponibles, etc.) -->
+    <div id="modal-holiday" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center z-3 hidden">
+        <div class="bg-white p-4 rounded shadow w-100" style="max-width: 320px;">
+            <h3 class="h5 fw-bold mb-3" id="modal-holiday-title">Añadir fecha</h3>
+            <div id="date-conflict-warning" class="alert alert-warning p-2 mb-3 small hidden">
+                <i data-lucide="alert-triangle" style="width:16px"></i> <span id="conflict-message"></span>
+            </div>
+            <label class="form-label small text-secondary" id="label-start-date">Fecha:</label>
+            <input type="date" id="input-holiday-date" class="form-control mb-3">
+            <div id="container-end-date" class="hidden">
+                <label class="form-label small text-secondary">Fecha Fin (Tramo):</label>
+                <input type="date" id="input-holiday-end-date" class="form-control mb-3">
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button onclick="window.app.closeModal('modal-holiday')" class="btn btn-light btn-sm text-secondary">Cancelar</button>
+                <button onclick="window.app.confirmAddHoliday()" class="btn btn-primary btn-sm">Añadir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para gestionar solicitudes de permisos -->
+    <div id="modal-request" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-3 hidden">
+        <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 450px; max-height: 90vh;">
+            <div class="bg-blue-700 text-white p-3 d-flex justify-content-between align-items-center rounded-top">
+                <h3 class="h6 fw-bold mb-0" id="modal-request-title">Gestionar día</h3>
+                <button onclick="window.app.closeModal('modal-request')" class="btn btn-sm text-white p-0"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-4 overflow-auto">
+                <div class="mb-4">
+                    <h4 class="small fw-bold text-secondary text-uppercase mb-2">Solicitudes en este día</h4>
+                    <div id="request-list-container" class="vstack gap-2"></div>
+                </div>
+                <hr>
+                <div>
+                    <h4 class="small fw-bold text-primary text-uppercase mb-3">Añadir nueva solicitud</h4>
+                    <div class="vstack gap-3">
+                        <div>
+                            <label class="form-label fw-medium mb-1">Profesor</label>
+                            <select id="req-teacher-select" class="form-select"><option value="">-- Selecciona --</option></select>
+                        </div>
+                        <div class="bg-light p-3 rounded border">
+                            <label class="d-block small fw-bold mb-2">Tipo de Permiso Disponible:</label>
+                            <div id="opt-paid-teaching" class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="reqType" id="rt1" value="paid_teaching">
+                                <label class="form-check-label small" for="rt1">Retribuido LECTIVO (Max 2)</label>
+                            </div>
+                            <div id="opt-paid-non-teaching" class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="reqType" id="rt2" value="paid_non_teaching">
+                                <label class="form-check-label small" for="rt2">Retribuido NO LECTIVO (Max 4)</label>
+                            </div>
+                            <div id="opt-unpaid" class="mt-3 pt-2 border-top">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="reqType" id="rt3" value="unpaid">
+                                    <label class="form-check-label small" for="rt3">No Retribuido (Sin límite)</label>
+                                </div>
+                            </div>
+                            <p id="type-help-text" class="small text-muted mt-2 fst-italic mb-0">* Las opciones dependen de si el día es lectivo o no.</p>
+                        </div>
+                        <button onclick="window.app.submitRequest()" class="btn btn-primary fw-bold w-100">Introducir Solicitud</button>
+                        <div id="bulk-action-container" class="hidden mt-3 pt-3 border-top">
+                            <button onclick="window.app.submitBulkRequest()" class="btn w-100 fw-bold d-flex align-items-center justify-content-center gap-2 text-white" style="background-color: #7e22ce;">
+                                <i data-lucide="users" style="width:16px"></i> Añadir a todo el Claustro
+                            </button>
+                            <p class="small text-muted mt-1 text-center mb-0">Solo se añadirán los que cumplan los requisitos.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para mostrar fechas de permisos por tipo -->
+    <div id="modal-teacher-permits" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-3 hidden">
+        <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 500px; max-height: 80vh;">
+            <div class="bg-blue-700 text-white p-3 d-flex justify-content-between align-items-center rounded-top">
+                <h3 class="h6 fw-bold mb-0" id="modal-teacher-permits-title">Permisos del profesor</h3>
+                <button onclick="window.app.closeModal('modal-teacher-permits')" class="btn btn-sm text-white p-0"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-4 overflow-auto">
+                <div id="modal-teacher-permits-body"></div>
+            </div>
+            <div class="p-3 bg-light rounded-bottom d-flex justify-content-end">
+                <button onclick="window.app.closeModal('modal-teacher-permits')" class="btn btn-secondary btn-sm">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para listar copias de seguridad de GitHub -->
+    <div id="modal-github-list" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-3 hidden">
+        <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 500px; max-height: 80vh;">
+            <div class="bg-dark text-white p-3 d-flex justify-content-between align-items-center rounded-top">
+                <h3 class="h6 fw-bold mb-0 d-flex align-items-center gap-2"><i data-lucide="cloud"></i> Copias de seguridad</h3>
+                <button onclick="window.app.closeModal('modal-github-list')" class="btn btn-sm text-white p-0"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-3 bg-light border-bottom small text-secondary">Selecciona la versión que deseas restaurar:</div>
+            <div class="p-0 overflow-auto flex-grow-1">
+                <ul id="github-file-list" class="list-group list-group-flush"></ul>
+            </div>
+            <div class="p-3 bg-light rounded-bottom d-flex justify-content-end">
+                <button onclick="window.app.closeModal('modal-github-list')" class="btn btn-secondary btn-sm">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO: Para resolver conflictos de días en múltiples categorías -->
+    <div id="modal-date-conflicts" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-3 hidden">
+        <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 700px; max-height: 90vh;">
+            <div class="bg-warning text-dark p-3 d-flex justify-content-between align-items-center rounded-top">
+                <h3 class="h6 fw-bold mb-0 d-flex align-items-center gap-2"><i data-lucide="alert-triangle"></i> Conflictos de categorías</h3>
+                <button onclick="window.app.closeModal('modal-date-conflicts')" class="btn btn-sm text-dark p-0"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-3 bg-light border-bottom small text-secondary">
+                Los siguientes días aparecen en más de una categoría. Por favor, selecciona la categoría correcta para cada día.
+            </div>
+            <div class="p-4 overflow-auto flex-grow-1">
+                <div id="conflict-days-list" class="vstack gap-3"></div>
+            </div>
+            <div class="p-3 bg-light rounded-bottom d-flex justify-content-between align-items-center">
+                <span id="conflict-count" class="small text-secondary">0 conflictos encontrados</span>
+                <div class="d-flex gap-2">
+                    <button onclick="window.app.ignoreAllConflicts()" class="btn btn-outline-secondary btn-sm">Ignorar todos</button>
+                    <button onclick="window.app.resolveAllConflicts()" class="btn btn-primary btn-sm">Resolver seleccionados</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO: Para mostrar la ayuda de la aplicación -->
+    <div id="modal-help" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-3 hidden">
+        <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 600px; max-height: 90vh;">
+            <div class="bg-blue-700 text-white p-3 d-flex justify-content-between align-items-center rounded-top">
+                <h3 class="h6 fw-bold mb-0 d-flex align-items-center gap-2"><i data-lucide="help-circle"></i> ¿Cómo funciona esta aplicación?</h3>
+                <button onclick="window.app.closeModal('modal-help')" class="btn btn-sm text-white p-0"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-4 overflow-auto">
+                <div class="mb-4">
+                    <p class="mb-3">Esta aplicación gestiona los permisos (asuntos propios) del profesorado de un centro educativo.</p>
+                    
+                    <h5 class="fw-bold text-blue-800 mb-2">📋 Pasos para configurar y usar la aplicación:</h5>
+                    <ol class="ps-3 mb-4">
+                        <li class="mb-2">
+                            <strong>Configura el año de inicio del curso</strong>
+                            <p class="small text-muted mb-1">En la pestaña "Configuración", ajusta el año de inicio del curso escolar (Septiembre).</p>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Añade la lista de profesorado</strong>
+                            <p class="small text-muted mb-1">Puedes añadir profesores manualmente o importar desde un archivo Excel con la lista.</p>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Configura los días especiales</strong>
+                            <p class="small text-muted mb-1">Establece festivos locales, provinciales, días no disponibles y días no lectivos.</p>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Gestiona permisos en el calendario</strong>
+                            <p class="small text-muted mb-1">En la pestaña "Calendario", haz clic en un día para añadir permisos al profesorado.</p>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Consulta informes</strong>
+                            <p class="small text-muted mb-1">Usa la pestaña "Informes" para ver resúmenes por profesor y exportar PDF.</p>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Guarda tus datos</strong>
+                            <p class="small text-muted mb-1">Guarda en local o en la nube (GitHub) para tener copias de seguridad.</p>
+                        </li>
+                    </ol>
+
+                    <h5 class="fw-bold text-blue-800 mb-2">🔐 Configuración de GitHub (Opcional)</h5>
+                    <div class="bg-blue-50 p-3 rounded border border-blue-200 mb-3">
+                        <p class="small mb-2">Para guardar en la nube necesitas un <strong>Personal Access Token (Classic)</strong> de GitHub:</p>
+                        <ol class="small ps-3 mb-0">
+                            <li class="mb-1">Ve a <a href="https://github.com/settings/tokens" target="_blank">GitHub Tokens</a></li>
+                            <li class="mb-1">Genera un nuevo token (Classic) con permisos <code>gist</code></li>
+                            <li class="mb-1">Copia el token (empieza por <code>ghp_</code>)</li>
+                            <li class="mb-1">Pégalo en la configuración o cárgalo desde un archivo .txt</li>
+                        </ol>
+                    </div>
+
+                    <h5 class="fw-bold text-blue-800 mb-2">📊 Tipos de permisos disponibles</h5>
+                    <ul class="ps-3 small mb-0">
+                        <li class="mb-1"><strong>Retribuidos Lectivos:</strong> Máximo 2 por profesor (solo en días lectivos)</li>
+                        <li class="mb-1"><strong>Retribuidos No Lectivos:</strong> Máximo 4 por profesor (solo en días no lectivos)</li>
+                        <li class="mb-1"><strong>No Retribuidos:</strong> Sin límite (cualquier día hábil)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="p-3 bg-light rounded-bottom d-flex justify-content-end">
+                <button onclick="window.app.closeModal('modal-help')" class="btn btn-primary btn-sm">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO: Opciones de guardado en GitHub -->
+    <div id="save-options-modal" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-4 hidden">
+        <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 500px; max-height: 80vh;">
+            <div class="bg-primary text-white p-3 d-flex justify-content-between align-items-center rounded-top">
+                <h3 class="h6 fw-bold mb-0 d-flex align-items-center gap-2">
+                    <i data-lucide="cloud"></i> Opciones de guardado
+                </h3>
+                <button onclick="document.getElementById('save-options-modal').classList.add('hidden')" class="btn btn-sm text-white p-0">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <p class="mb-4">Se han encontrado <span id="found-backups-count">0</span> copias de seguridad existentes. ¿Qué deseas hacer?</p>
+                
+                <div class="vstack gap-3">
+                    <button onclick="window.app.handleSaveOption('overwrite', 'save-options-modal')" 
+                            class="btn btn-primary d-flex align-items-center gap-2 justify-content-start text-start">
+                        <i data-lucide="save" style="width:20px"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">Sobrescribir última copia</div>
+                            <small class="d-block">Actualizará la copia más reciente</small>
+                        </div>
+                    </button>
+                    
+                    <button onclick="window.app.handleSaveOption('overwrite_selected', 'save-options-modal')" 
+                            class="btn btn-warning d-flex align-items-center gap-2 justify-content-start text-start">
+                        <i data-lucide="edit" style="width:20px"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">Seleccionar copia para sobrescribir</div>
+                            <small class="d-block">Elegirás qué copia actualizar</small>
+                        </div>
+                    </button>
+                    
+                    <button onclick="window.app.handleSaveOption('new', 'save-options-modal')" 
+                            class="btn btn-success d-flex align-items-center gap-2 justify-content-start text-start">
+                        <i data-lucide="plus-circle" style="width:20px"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">Crear nueva copia</div>
+                            <small class="d-block">Generarás una copia nueva (seguirán existiendo las anteriores)</small>
+                        </div>
+                    </button>
+                    
+                    <button onclick="window.app.handleSaveOption('cancel', 'save-options-modal')" 
+                            class="btn btn-outline-secondary mt-3">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO: Selección de gist para sobrescribir -->
+    <div id="gist-selection-modal" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-4 hidden">
+        <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 600px; max-height: 80vh;">
+            <div class="bg-warning text-dark p-3 d-flex justify-content-between align-items-center rounded-top">
+                <h3 class="h6 fw-bold mb-0 d-flex align-items-center gap-2">
+                    <i data-lucide="edit"></i> Seleccionar copia para sobrescribir
+                </h3>
+                <button onclick="document.getElementById('gist-selection-modal').classList.add('hidden')" class="btn btn-sm text-dark p-0">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="p-3 bg-light border-bottom small text-secondary">
+                Selecciona la copia que deseas sobrescribir (se perderán los datos antiguos):
+            </div>
+            <div class="p-0 overflow-auto flex-grow-1">
+                <div class="list-group list-group-flush" id="gist-selection-list"></div>
+            </div>
+            <div class="p-3 bg-light rounded-bottom d-flex justify-content-between align-items-center">
+                <button onclick="document.getElementById('gist-selection-modal').classList.add('hidden')" class="btn btn-secondary btn-sm">
+                    Cancelar
+                </button>
+                <div class="small text-muted"><span id="gist-count">0</span> copias encontradas</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS para los acordeones -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+<!-- PWA: Service Worker Registration -->
+<script>
+    // Control de versiones - DEBE COINCIDIR con sw.js
+    const APP_VERSION = '1.8.1';
+    let newServiceWorker = null;
+    let registrationInstance = null;
+    let isUpdating = false;
+
+    // ================================================
+    // VERIFICACIÓN DE VERSIÓN AL CARGAR
+    // ================================================
+    (function checkVersionOnLoad() {
+        const savedVersion = localStorage.getItem('app_version');
+        console.log('📱 Versión guardada:', savedVersion, '| Nueva:', APP_VERSION);
+        
+        if (savedVersion !== APP_VERSION) {
+            console.log('🔄 Cambio de versión detectado');
+            
+            // Marcar que estamos en proceso de actualización
+            sessionStorage.setItem('updating_to', APP_VERSION);
+            
+            // Limpiar cachés de Service Worker
+            if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                    cacheNames.forEach(cacheName => {
+                        if (cacheName !== 'gestor-permisos-v' + APP_VERSION.replace(/\./g, '-')) {
+                            console.log('🗑️ Eliminando caché antigua:', cacheName);
+                            caches.delete(cacheName);
+                        }
+                    });
+                });
+            }
+            
+            // Guardar nueva versión
+            localStorage.setItem('app_version', APP_VERSION);
+            
+            // Si estamos actualizando desde una versión anterior, recargar
+            if (savedVersion && savedVersion !== APP_VERSION) {
+                console.log('🔄 Recargando para aplicar actualización...');
+                setTimeout(() => {
+                    window.location.reload(true);
+                }, 1000);
+            }
+        }
+    })();
+
+    // ================================================
+    // REGISTRO DEL SERVICE WORKER
+    // ================================================
+    if ('serviceWorker' in navigator) {
+        // Registrar inmediatamente (no esperar a load)
+        navigator.serviceWorker.register('sw.js?v=' + APP_VERSION)
+            .then(function(registration) {
+                console.log('✅ Service Worker registrado. Scope:', registration.scope);
+                registrationInstance = registration;
+                
+                // Configurar comprobación periódica de actualizaciones
+                setInterval(() => {
+                    if (!isUpdating) {
+                        registration.update();
+                    }
+                }, 2 * 60 * 1000); // Cada 2 minutos
+                
+                // Escuchar actualizaciones del Service Worker
+                registration.addEventListener('updatefound', () => {
+                    newServiceWorker = registration.installing;
+                    console.log('🔄 Nuevo Service Worker encontrado. Estado:', newServiceWorker.state);
+                    
+                    newServiceWorker.addEventListener('statechange', () => {
+                        console.log('📊 Estado del nuevo SW:', newServiceWorker.state);
+                        
+                        if (newServiceWorker.state === 'installed') {
+                            if (navigator.serviceWorker.controller) {
+                                // Hay una nueva versión disponible
+                                console.log('🎉 Nueva versión del Service Worker lista');
+                                showUpdateNotification();
+                            }
+                        }
+                    });
+                });
+                
+                // Verificar actualizaciones inmediatamente
+                registration.update();
+            })
+            .catch(function(error) {
+                console.error('❌ Error registrando Service Worker:', error);
+            });
+        
+        // ================================================
+        // COMUNICACIÓN CON EL SERVICE WORKER
+        // ================================================
+        
+        // Escuchar mensajes del Service Worker
+        navigator.serviceWorker.addEventListener('message', event => {
+            if (event.data && event.data.type === 'SW_UPDATED') {
+                console.log('🔄 Service Worker actualizado a versión:', event.data.version);
+                showReloadNotification();
+            }
+            
+            if (event.data && event.data.type === 'CACHE_UPDATED') {
+                console.log('🔄 Cache actualizado para:', event.data.url);
+            }
+        });
+        
+        // Escuchar cambios de visibilidad (cuando la app vuelve a primer plano)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && registrationInstance && !isUpdating) {
+                console.log('🔍 App visible, verificando actualizaciones...');
+                registrationInstance.update();
+            }
+        });
+        
+        // Forzar actualización al conectar/desconectar red
+        window.addEventListener('online', () => {
+            if (registrationInstance && !isUpdating) {
+                console.log('📶 Conectado a internet, verificando actualizaciones...');
+                registrationInstance.update();
+            }
+        });
+    }
+
+    // ================================================
+    // FUNCIONES DE NOTIFICACIÓN
+    // ================================================
+    
+    function showUpdateNotification() {
+        // Solo mostrar si no estamos ya en proceso de actualización
+        if (isUpdating) return;
+        
+        // Crear notificación flotante
+        const notification = document.createElement('div');
+        notification.id = 'pwa-update-notification';
+        notification.innerHTML = `
+            <div class="alert alert-warning alert-dismissible fade show shadow-lg" role="alert" 
+                 style="position: fixed; bottom: 20px; right: 20px; left: 20px; z-index: 9999; max-width: 400px; margin: 0 auto;">
+                <div class="d-flex align-items-center">
+                    <i data-lucide="refresh-cw" class="me-2" style="width: 20px; height: 20px;"></i>
+                    <strong class="me-auto">Actualización disponible</strong>
+                </div>
+                <p class="mb-1 mt-2 small">Hay una nueva versión de la aplicación.</p>
+                <div class="d-flex gap-2 mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="updateAppNow()">
+                        Actualizar ahora
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="dismissUpdate()">
+                        Más tarde
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        lucide.createIcons();
+        
+        // Auto-ocultar después de 30 segundos
+        setTimeout(() => {
+            if (notification.parentNode && !isUpdating) {
+                notification.remove();
+            }
+        }, 30000);
+    }
+    
+    function showReloadNotification() {
+        const notification = document.createElement('div');
+        notification.id = 'pwa-reload-notification';
+        notification.innerHTML = `
+            <div class="alert alert-info alert-dismissible fade show shadow-lg" role="alert" 
+                 style="position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 350px;">
+                <div class="d-flex align-items-center">
+                    <i data-lucide="check-circle" class="me-2 text-success" style="width: 20px; height: 20px;"></i>
+                    <strong class="me-auto">Actualización lista</strong>
+                    <button type="button" class="btn-close btn-sm" onclick="this.parentElement.parentElement.parentElement.remove()"></button>
+                </div>
+                <p class="mb-0 mt-1 small">La aplicación se ha actualizado. <a href="javascript:location.reload()" class="alert-link">Recargar</a> para aplicar cambios.</p>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        lucide.createIcons();
+    }
+
+    // ================================================
+    // FUNCIONES GLOBALES PARA ACTUALIZACIÓN
+    // ================================================
+    
+    window.updateAppNow = function() {
+        isUpdating = true;
+        
+        if (newServiceWorker) {
+            console.log('🚀 Activando nuevo Service Worker...');
+            newServiceWorker.postMessage({ type: 'SKIP_WAITING' });
+        }
+        
+        // Mostrar loader
+        const loader = document.getElementById('app-loader');
+        if (loader) {
+            loader.style.display = 'flex';
+            loader.style.opacity = '1';
+            loader.innerHTML = `
+                <div class="spinner mb-4"></div>
+                <h2 class="h5 text-secondary fw-bold">Actualizando aplicación...</h2>
+                <p class="small text-muted mt-2">Esto tomará unos segundos</p>
+            `;
+        }
+        
+        // Recargar después de 1 segundo para dar tiempo al SW
+        setTimeout(() => {
+            console.log('🔄 Recargando aplicación...');
+            window.location.reload(true);
+        }, 1000);
+    };
+    
+    window.dismissUpdate = function() {
+        const notification = document.getElementById('pwa-update-notification');
+        if (notification) {
+            notification.remove();
+        }
+    };
+
+    // ================================================
+    // EVENTOS DE INSTALACIÓN PWA
+    // ================================================
+    
+    window.addEventListener('beforeinstallprompt', (event) => {
+        console.log('📲 PWA: beforeinstallprompt disparado');
+        window.deferredPrompt = event;
+        
+        // Opcional: Mostrar botón de instalación
+        // showInstallButton();
+    });
+
+    window.addEventListener('appinstalled', (event) => {
+        console.log('✅ PWA instalada correctamente');
+        window.deferredPrompt = null;
+        
+        // Limpiar caché para empezar fresco
+        if ('caches' in window) {
+            caches.keys().then(names => {
+                names.forEach(name => caches.delete(name));
+            });
+        }
+    });
+
+    // ================================================
+    // DETECCIÓN DE MODO OFFLINE/ONLINE
+    // ================================================
+    
+    window.addEventListener('offline', () => {
+        console.log('🔴 Modo offline');
+        // Podrías mostrar un indicador de offline
+    });
+    
+    window.addEventListener('online', () => {
+        console.log('🟢 Modo online');
+        // Intentar sincronizar si hay datos pendientes
+    });
+    
+    // ================================================
+    // VERIFICACIÓN AL VOLVER A LA APP (PAGESHOW)
+    // ================================================
+    
+    window.addEventListener('pageshow', (event) => {
+        // Si la página viene de cache (back/forward), forzar actualización
+        if (event.persisted && registrationInstance && !isUpdating) {
+            console.log('🔍 Página cargada desde cache, verificando actualizaciones...');
+            registrationInstance.update();
+            
+            // Verificar si hay una actualización pendiente
+            const pendingUpdate = sessionStorage.getItem('update_pending');
+            if (pendingUpdate === 'true') {
+                sessionStorage.removeItem('update_pending');
+                window.location.reload(true);
+            }
+        }
+    });
+    
+    // ================================================
+    // FORZAR ACTUALIZACIÓN MANUAL (para debugging)
+    // ================================================
+    
+    window.forceUpdate = function() {
+        if (registrationInstance) {
+            console.log('🔄 Forzando actualización manual...');
+            registrationInstance.update().then(() => {
+                if (newServiceWorker) {
+                    newServiceWorker.postMessage({ type: 'SKIP_WAITING' });
+                    setTimeout(() => window.location.reload(true), 500);
+                }
+            });
+        }
+    };
+</script>
+
+    <script type="module">
+        // ================================================
+        // VERIFICACIÓN DE VERSIÓN - AÑADIR AL INICIO
+        // ================================================
+        const EXPECTED_VERSION = '1.8.1';
+        const currentVersion = localStorage.getItem('app_version');
+        
+        if (currentVersion !== EXPECTED_VERSION) {
+            console.log('🔁 Nueva versión detectada:', EXPECTED_VERSION, '(anterior:', currentVersion, ')');
+            
+            // Limpiar cachés antiguas
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    console.log('🧹 Limpiando', names.length, 'cachés antiguas');
+                    names.forEach(name => {
+                        if (!name.includes('gestor-permisos-v1.8.1')) { // Mantener solo la actual
+                            console.log('🗑️ Eliminando caché:', name);
+                            caches.delete(name);
+                        }
+                    });
+                }).catch(err => console.log('Error limpiando cachés:', err));
+            }
+            
+            // Mantener solo datos esenciales en localStorage
+            const essentialKeys = ['githubToken', 'schoolConfig', 'schoolRequests', 'lastUpdate'];
+            const allKeys = Object.keys(localStorage);
+            let removedCount = 0;
+            
+            allKeys.forEach(key => {
+                if (!essentialKeys.includes(key) && key !== 'app_version') {
+                    localStorage.removeItem(key);
+                    removedCount++;
+                }
+            });
+            
+            console.log('🧹 Limpiados', removedCount, 'items de localStorage');
+            
+            // Guardar nueva versión
+            localStorage.setItem('app_version', EXPECTED_VERSION);
+            
+            // Si es primera vez o cambio de versión mayor, recargar
+            if (currentVersion && !currentVersion.startsWith('1.3.')) {
+                console.log('🔄 Recargando para aplicar nueva versión...');
+                setTimeout(() => window.location.reload(), 500);
+            }
+        }
+        
+        window.app = {
+            config: { 
+                startYear: new Date().getFullYear(), 
+                teachers: [], 
+                localHolidays: [], 
+                provHolidays: [], 
+                unavailableDays: [], // NUEVO: Días no disponibles
+                nonTeachingDays: [] 
+            },
+            requests: [], 
+            tempHolidayType: null,
+            selectedDate: null,
+            githubToken: localStorage.getItem('githubToken') || '',
+            currentGists: [] // Almacenar los gists actuales
+        };
+
+        const GIST_FILENAME = 'gestor_permisos_data.json';
+        const GIST_DESC = 'Gestor de Permisos Escolar - Datos';
+        
+        function getTimestamp() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            // Formato final: YYYY-MM-DD HH-MM-SS
+            return `${year}-${month}-${day} ${hours}-${minutes}-${seconds}`;
+        }
+
+        // Función para detectar conflictos de días en múltiples categorías
+        function findDateConflicts() {
+            const conflicts = [];
+            const allDates = {};
+            
+            // Recolectar todas las fechas de todas las categorías
+            const categories = [
+                { name: 'localHolidays', list: window.app.config.localHolidays, label: 'Festivos Locales' },
+                { name: 'provHolidays', list: window.app.config.provHolidays, label: 'Festivos Provinciales' },
+                { name: 'unavailableDays', list: window.app.config.unavailableDays || [], label: 'Días No Disponibles' },
+                { name: 'nonTeachingDays', list: window.app.config.nonTeachingDays || [], label: 'Días No Lectivos' }
+            ];
+            
+            categories.forEach(category => {
+                category.list.forEach(date => {
+                    if (!allDates[date]) {
+                        allDates[date] = [];
+                    }
+                    allDates[date].push(category);
+                });
+            });
+            
+            // Encontrar fechas que están en más de una categoría
+            Object.keys(allDates).forEach(date => {
+                if (allDates[date].length > 1) {
+                    conflicts.push({
+                        date: date,
+                        categories: allDates[date],
+                        selectedCategory: null // Para almacenar la selección del usuario
+                    });
+                }
+            });
+            
+            return conflicts;
+        }
+        
+        // Función para mostrar conflictos al usuario
+        function showDateConflictsModal(conflicts) {
+            if (conflicts.length === 0) return;
+            
+            const container = document.getElementById('conflict-days-list');
+            container.innerHTML = '';
+            
+            conflicts.forEach((conflict, index) => {
+                const dateObj = new Date(conflict.date);
+                const dateFormatted = dateObj.toLocaleDateString('es-ES', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                
+                const conflictDiv = document.createElement('div');
+                conflictDiv.className = 'conflict-day-item';
+                conflictDiv.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <strong class="d-block">${dateFormatted}</strong>
+                            <small class="text-muted">${conflict.date}</small>
+                        </div>
+                        <span class="badge bg-warning">En ${conflict.categories.length} categorías</span>
+                    </div>
+                    <div class="small text-secondary mb-2">
+                        Actualmente en: ${conflict.categories.map(c => c.label).join(', ')}
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="small fw-medium">Mover a:</label>
+                        <select class="form-select form-select-sm" 
+                                data-conflict-index="${index}"
+                                onchange="window.app.updateConflictSelection(${index}, this.value)">
+                            <option value="">-- Selecciona categoría --</option>
+                            ${conflict.categories.map(category => 
+                                `<option value="${category.name}">${category.label}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+                container.appendChild(conflictDiv);
+            });
+            
+            document.getElementById('conflict-count').textContent = 
+                `${conflicts.length} conflicto(s) encontrado(s)`;
+            
+            document.getElementById('modal-date-conflicts').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        // Función para mostrar el indicador de última actualización
+        function showLastUpdateIndicator() {
+            const lastUpdate = localStorage.getItem('lastUpdate');
+            if (!lastUpdate) return;
+            
+            try {
+                const updateData = JSON.parse(lastUpdate);
+                const date = new Date(updateData.timestamp);
+                const formattedDate = date.toLocaleString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const sourceText = updateData.source === 'github' ? 'GitHub' : 'Local';
+                const indicator = document.getElementById('last-update-indicator');
+                const textElement = document.getElementById('last-update-text');
+                
+                textElement.textContent = `Última actualización: ${formattedDate} (${sourceText})`;
+                indicator.classList.remove('hidden');
+                
+                // Auto-ocultar después de 10 segundos
+                setTimeout(() => {
+                    indicator.classList.add('fade-out');
+                    setTimeout(() => {
+                        indicator.classList.add('hidden');
+                        indicator.classList.remove('fade-out');
+                    }, 500);
+                }, 10000);
+                
+                // Cerrar al hacer clic
+                indicator.onclick = () => {
+                    indicator.classList.add('fade-out');
+                    setTimeout(() => {
+                        indicator.classList.add('hidden');
+                        indicator.classList.remove('fade-out');
+                    }, 500);
+                };
+            } catch (e) {
+                console.error('Error al procesar lastUpdate:', e);
+            }
+        }
+        
+        // Función para guardar la información de última actualización
+        function saveLastUpdate(source) {
+            const updateData = {
+                timestamp: new Date().toISOString(),
+                source: source // 'local' o 'github'
+            };
+            localStorage.setItem('lastUpdate', JSON.stringify(updateData));
+            
+            // Mostrar el indicador después de guardar
+            showLastUpdateIndicator();
+        }
+
+        async function init() {
+            try {
+                const lc = localStorage.getItem('schoolConfig');
+                const lr = localStorage.getItem('schoolRequests');
+                if (lc) window.app.config = { ...window.app.config, ...JSON.parse(lc) };
+                if (lr) window.app.requests = JSON.parse(lr);
+                window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name));
+                if(window.app.githubToken) document.getElementById('input-github-token').value = window.app.githubToken;
+                renderAll();
+                
+                // Mostrar indicador de última actualización al iniciar
+                showLastUpdateIndicator();
+                
+                // Verificar conflictos al iniciar
+                const conflicts = findDateConflicts();
+                if (conflicts.length > 0) {
+                    // Esperar un momento para que la interfaz se cargue completamente
+                    setTimeout(() => {
+                        showDateConflictsModal(conflicts);
+                    }, 1000);
+                }
+            } catch (err) { console.error(err); } 
+            finally {
+                const loader = document.getElementById('app-loader');
+                if(loader) { loader.style.opacity = '0'; setTimeout(() => loader.remove(), 500); }
+                lucide.createIcons();
+            }
+        }
+
+        function updateAuthStatus(isConnected, userLogin) {
+            const el = document.getElementById('auth-status');
+            const msgEl = document.getElementById('github-msg');
+            if(isConnected) {
+                el.innerText = `Conectado (${userLogin})`; 
+                el.classList.replace('bg-dark', 'bg-success');
+                msgEl.innerText = `Token válido. Usuario: ${userLogin}`; 
+                msgEl.classList.remove('text-secondary', 'text-danger'); msgEl.classList.add('text-success');
+            } else {
+                el.innerText = 'Modo Local'; 
+                el.classList.replace('bg-success', 'bg-dark');
+                msgEl.innerText = userLogin || 'Error en token.'; 
+                msgEl.classList.remove('text-success', 'text-muted'); msgEl.classList.add('text-danger');
+            }
+        }
+
+        // Eliminamos la función toggleGithubConfig ya que ahora usamos acordeón de Bootstrap
+        window.app.toggleGithubConfig = () => {
+            console.log("Función obsoleta - ahora usamos acordeón de Bootstrap");
+        };
+
+        // NUEVA FUNCIÓN: Cargar token desde archivo .txt
+        window.app.loadTokenFromFile = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const token = e.target.result.trim();
+                document.getElementById('input-github-token').value = token;
+                document.getElementById('token-file-name').textContent = file.name;
+                showNotification('Token cargado desde archivo', 'info');
+            };
+            reader.readAsText(file);
+        };
+
+        // NUEVA FUNCIÓN: Abrir modal de ayuda
+        window.app.openHelpModal = function() {
+            document.getElementById('modal-help').classList.remove('hidden');
+            lucide.createIcons();
+        };
+
+        window.app.saveGithubToken = async () => {
+            const t = document.getElementById('input-github-token').value.trim();
+            if(!t) return alert("Introduce un token válido");
+            showNotification('Validando token...', 'info');
+            try {
+                const res = await fetch('https://api.github.com/user', { headers: { 'Authorization': `token ${t}`, 'Accept': 'application/vnd.github.v3+json' }});
+                if(!res.ok) throw new Error("Token inválido");
+                const user = await res.json();
+                window.app.githubToken = t; localStorage.setItem('githubToken', t);
+                updateAuthStatus(true, user.login); showNotification(`Token válido. Conectado como ${user.login}`);
+            } catch(e) { console.error(e); updateAuthStatus(false, "Token inválido"); showNotification("Error: El token no funciona", 'error'); }
+        };
+
+        // MODIFICADA: Función para guardar en GitHub con opciones
+        window.app.saveGitHub = async () => {
+            if(!window.app.githubToken) return alert("Primero configura tu Token.");
+            
+            try {
+                showNotification('Conectando con GitHub...', 'info');
+                
+                // Buscar gists existentes
+                const listResp = await fetch('https://api.github.com/gists', { 
+                    headers: {'Authorization': `token ${window.app.githubToken}`} 
+                });
+                
+                if(!listResp.ok) throw new Error(`Error al conectar: ${listResp.status}`);
+                
+                const gists = await listResp.json();
+                const relevantGists = gists.filter(g => 
+                    (g.files && g.files[GIST_FILENAME]) || 
+                    (g.description && g.description.includes('Gestor de Permisos'))
+                );
+                
+                let shouldOverwrite = false;
+                let existingGistId = null;
+                
+                if (relevantGists.length > 0) {
+                    // Actualizar contador en el modal
+                    document.getElementById('found-backups-count').textContent = relevantGists.length;
+                    
+                    // Preguntar al usuario qué hacer
+                    const choice = await window.app.showSaveOptionsModal(relevantGists);
+                    
+                    if (choice === 'overwrite') {
+                        // Ordenar por fecha más reciente
+                        relevantGists.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+                        existingGistId = relevantGists[0].id;
+                        shouldOverwrite = true;
+                    } else if (choice === 'overwrite_selected') {
+                        // El usuario seleccionará uno específico
+                        await window.app.showGistSelectionModal(relevantGists, 'overwrite');
+                        return; // La función modal manejará el proceso
+                    } else if (choice === 'new') {
+                        // Crear nuevo - continuar normalmente
+                        shouldOverwrite = false;
+                    } else {
+                        // Usuario canceló
+                        return;
+                    }
+                }
+                
+                const content = JSON.stringify({ config: window.app.config, requests: window.app.requests }, null, 2);
+                const timestamp = new Date().toLocaleString('es-ES');
+                
+                if (shouldOverwrite && existingGistId) {
+                    // Sobrescribir gist existente
+                    const body = { 
+                        description: `${GIST_DESC} - ${timestamp} (Sobrescrito)`, 
+                        files: { [GIST_FILENAME]: { content: content } } 
+                    };
+                    
+                    const resp = await fetch(`https://api.github.com/gists/${existingGistId}`, { 
+                        method: 'PATCH', 
+                        headers: {'Authorization': `token ${window.app.githubToken}`}, 
+                        body: JSON.stringify(body) 
+                    });
+                    
+                    if(!resp.ok) throw new Error(`Error al sobrescribir: ${resp.status}`);
+                    showNotification('¡Datos sobrescritos en GitHub!');
+                } else {
+                    // Crear nuevo gist
+                    const body = { 
+                        description: `${GIST_DESC} - ${timestamp}`, 
+                        public: false, 
+                        files: { [GIST_FILENAME]: { content: content } } 
+                    };
+                    
+                    const resp = await fetch('https://api.github.com/gists', { 
+                        method: 'POST', 
+                        headers: {'Authorization': `token ${window.app.githubToken}`}, 
+                        body: JSON.stringify(body) 
+                    });
+                    
+                    if(!resp.ok) throw new Error(`Error al guardar: ${resp.status}`);
+                    showNotification('¡Nueva copia creada en GitHub!');
+                }
+                
+                // Guardar información de última actualización
+                saveLastUpdate('github');
+            } catch (e) { 
+                console.error(e); 
+                showNotification(e.message, 'error'); 
+            }
+        };
+
+        // NUEVA FUNCIÓN: Modal para opciones de guardado
+        window.app.showSaveOptionsModal = function(gists) {
+            return new Promise((resolve) => {
+                const modalId = 'save-options-modal';
+                const modal = document.getElementById(modalId);
+                
+                // Actualizar contador
+                document.getElementById('found-backups-count').textContent = gists.length;
+                
+                // Configurar resolución
+                window.app.handleSaveOption = function(option, modalId) {
+                    document.getElementById(modalId).classList.add('hidden');
+                    resolve(option);
+                };
+                
+                // Mostrar modal
+                modal.classList.remove('hidden');
+                lucide.createIcons();
+            });
+        };
+
+        // NUEVA FUNCIÓN: Modal para seleccionar gist a sobrescribir
+        window.app.showGistSelectionModal = function(gists, action) {
+            return new Promise((resolve) => {
+                const modalId = 'gist-selection-modal';
+                const modal = document.getElementById(modalId);
+                
+                // Ordenar por fecha (más reciente primero)
+                gists.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+                
+                // Actualizar contador
+                document.getElementById('gist-count').textContent = gists.length;
+                
+                // Llenar la lista
+                const listContainer = document.getElementById('gist-selection-list');
+                listContainer.innerHTML = '';
+                
+                gists.forEach((gist, index) => {
+                    const date = new Date(gist.updated_at).toLocaleString('es-ES');
+                    const desc = gist.description || '(Sin descripción)';
+                    const isMostRecent = index === 0;
+                    
+                    const item = document.createElement('div');
+                    item.className = `list-group-item list-group-item-action p-3 ${isMostRecent ? 'border-start border-3 border-warning' : ''}`;
+                    item.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <input class="form-check-input me-3" type="radio" name="selectedGist" id="gist-${gist.id}" value="${gist.id}">
+                            <label class="flex-grow-1" for="gist-${gist.id}" style="cursor: pointer;">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1 me-3">
+                                        <div class="fw-bold text-dark">${desc}</div>
+                                        <div class="small text-secondary mt-1 d-flex align-items-center gap-2">
+                                            <i data-lucide="clock" style="width:12px"></i> ${date}
+                                            ${isMostRecent ? '<span class="badge bg-warning text-dark">Más reciente</span>' : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    `;
+                    listContainer.appendChild(item);
+                    
+                    // Configurar evento de clic
+                    item.addEventListener('click', (e) => {
+                        if (!e.target.matches('input[type="radio"]')) {
+                            const radio = item.querySelector('input[type="radio"]');
+                            radio.checked = true;
+                        }
+                    });
+                });
+                
+                // Añadir botón de confirmar
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'btn btn-warning w-100 rounded-0 border-0';
+                confirmBtn.innerHTML = '<i data-lucide="save" class="me-2"></i> Sobrescribir copia seleccionada';
+                confirmBtn.onclick = async () => {
+                    const selectedRadio = document.querySelector('input[name="selectedGist"]:checked');
+                    if (!selectedRadio) {
+                        alert('Por favor, selecciona una copia para sobrescribir');
+                        return;
+                    }
+                    
+                    const gistId = selectedRadio.value;
+                    modal.classList.add('hidden');
+                    
+                    // Proceder a sobrescribir
+                    try {
+                        showNotification('Sobrescribiendo copia...', 'info');
+                        const content = JSON.stringify({ config: window.app.config, requests: window.app.requests }, null, 2);
+                        const timestamp = new Date().toLocaleString('es-ES');
+                        
+                        const body = { 
+                            description: `${GIST_DESC} - ${timestamp} (Sobrescrito)`, 
+                            files: { [GIST_FILENAME]: { content: content } } 
+                        };
+                        
+                        const resp = await fetch(`https://api.github.com/gists/${gistId}`, { 
+                            method: 'PATCH', 
+                            headers: {'Authorization': `token ${window.app.githubToken}`}, 
+                            body: JSON.stringify(body) 
+                        });
+                        
+                        if(!resp.ok) throw new Error(`Error al sobrescribir: ${resp.status}`);
+                        showNotification('¡Copia sobrescrita en GitHub!');
+                        saveLastUpdate('github');
+                    } catch (e) { 
+                        console.error(e); 
+                        showNotification(e.message, 'error'); 
+                    }
+                };
+                
+                listContainer.appendChild(confirmBtn);
+                
+                // Mostrar modal
+                modal.classList.remove('hidden');
+                lucide.createIcons();
+            });
+        };
+
+        window.app.loadGitHub = async () => {
+            if(!window.app.githubToken) return alert("Configura tu Token primero.");
+            try {
+                showNotification('Consultando GitHub...', 'info');
+                const listResp = await fetch('https://api.github.com/gists', { headers: {'Authorization': `token ${window.app.githubToken}`} });
+                if(!listResp.ok) throw new Error('Error al conectar con GitHub.');
+                const gists = await listResp.json();
+                const relevantGists = gists.filter(g => (g.files && g.files[GIST_FILENAME]) || (g.description && g.description.includes('Gestor de Permisos')));
+                if (relevantGists.length === 0) throw new Error('No se encontraron copias.');
+                window.app.currentGists = relevantGists; // Guardamos los gists actuales
+                window.app.renderGistList(relevantGists);
+                document.getElementById('modal-github-list').classList.remove('hidden');
+                lucide.createIcons();
+            } catch (e) { console.error(e); showNotification(e.message, 'error'); }
+        };
+
+        window.app.renderGistList = (gists) => {
+            const container = document.getElementById('github-file-list'); 
+            container.innerHTML = '';
+            
+            if (gists.length === 0) {
+                container.innerHTML = `
+                    <li class="list-group-item text-center text-muted py-4">
+                        <i data-lucide="folder-x" style="width: 24px; height: 24px;" class="mb-2"></i>
+                        <div>No se encontraron copias de seguridad</div>
+                    </li>
+                `;
+                lucide.createIcons();
+                return;
+            }
+            
+            gists.forEach((gist, index) => {
+                const date = new Date(gist.updated_at).toLocaleString();
+                const desc = gist.description || '(Sin descripción)';
+                const gistId = gist.id;
+                
+                const li = document.createElement('li');
+                li.id = `gist-item-${gistId}`;
+                li.className = 'list-group-item gist-item p-3';
+                li.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1 me-3" style="cursor: pointer;" onclick="window.app.loadSpecificGist('${gistId}')">
+                            <div class="fw-bold text-dark">${desc}</div>
+                            <div class="small text-secondary mt-1 d-flex align-items-center gap-2">
+                                <i data-lucide="clock" style="width:12px"></i> ${date} 
+                                <span class="badge bg-light text-secondary border">ID: ${gistId.substr(0,7)}...</span>
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">
+                                    ${Object.keys(gist.files).length} archivo(s)
+                                </span>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button onclick="window.app.loadSpecificGist('${gistId}')" 
+                                    class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1">
+                                <i data-lucide="download-cloud" style="width:14px"></i>
+                                <span class="d-none d-md-inline">Restaurar</span>
+                            </button>
+                            <button onclick="window.app.deleteGist('${gistId}', ${index})" 
+                                    class="btn btn-sm btn-outline-danger delete-gist-btn d-flex align-items-center gap-1">
+                                <i data-lucide="trash-2" style="width:14px"></i>
+                                <span class="d-none d-md-inline">Eliminar</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(li);
+            });
+            lucide.createIcons();
+        };
+
+        // Nueva función para eliminar un gist
+        window.app.deleteGist = async function(gistId, index) {
+            // Obtener el elemento DOM correspondiente
+            const gistElement = document.getElementById(`gist-item-${gistId}`);
+            if (!gistElement) return;
+            
+            const gistDescription = window.app.currentGists[index]?.description || '(Sin descripción)';
+            
+            if (!confirm(`¿Estás seguro de que quieres eliminar permanentemente esta copia de seguridad?\n\n"${gistDescription}"\n\nEsta acción no se puede deshacer.`)) {
+                return;
+            }
+            
+            if(!window.app.githubToken) {
+                showNotification('Error: Token no configurado', 'error');
+                return;
+            }
+            
+            // Deshabilitar el elemento mientras se procesa
+            gistElement.classList.add('deleting');
+            const buttons = gistElement.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            // Cambiar el texto del botón de eliminar
+            const deleteBtn = gistElement.querySelector('.delete-gist-btn');
+            if (deleteBtn) {
+                deleteBtn.innerHTML = '<i data-lucide="loader-2" style="width:14px" class="spin"></i> Eliminando...';
+                lucide.createIcons();
+            }
+            
+            try {
+                showNotification('Eliminando copia de seguridad...', 'info');
+                
+                const deleteResp = await fetch(`https://api.github.com/gists/${gistId}`, { 
+                    method: 'DELETE', 
+                    headers: {
+                        'Authorization': `token ${window.app.githubToken}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                if(!deleteResp.ok) {
+                    if (deleteResp.status === 404) {
+                        throw new Error('La copia de seguridad no existe o ya fue eliminada.');
+                    } else if (deleteResp.status === 403) {
+                        throw new Error('Permiso denegado. Verifica que tu token tenga permisos para eliminar gists.');
+                    } else {
+                        throw new Error(`Error al eliminar: ${deleteResp.status} ${deleteResp.statusText}`);
+                    }
+                }
+                
+                // 1. Eliminar el gist del array currentGists
+                window.app.currentGists.splice(index, 1);
+                
+                // 2. Eliminar el elemento del DOM
+                gistElement.remove();
+                
+                // 3. Verificar si quedan elementos en la lista
+                const container = document.getElementById('github-file-list');
+                if (window.app.currentGists.length === 0) {
+                    container.innerHTML = `
+                        <li class="list-group-item text-center text-muted py-4">
+                            <i data-lucide="folder-x" style="width: 24px; height: 24px;" class="mb-2"></i>
+                            <div>No se encontraron copias de seguridad</div>
+                    </li>
+                    `;
+                    lucide.createIcons();
+                }
+                
+                showNotification('¡Copia de seguridad eliminada correctamente!');
+                
+            } catch (e) {
+                console.error(e);
+                showNotification(`Error: ${e.message}`, 'error');
+                
+                // Restaurar el elemento si hay error
+                gistElement.classList.remove('deleting');
+                buttons.forEach(btn => btn.disabled = false);
+                if (deleteBtn) {
+                    deleteBtn.innerHTML = '<i data-lucide="trash-2" style="width:14px"></i><span class="d-none d-md-inline"> Eliminar</span>';
+                    lucide.createIcons();
+                }
+            }
+        };
+
+        window.app.loadSpecificGist = async (gistId) => {
+            window.app.closeModal('modal-github-list');
+            showNotification('Descargando...', 'info');
+            try {
+                const gistResp = await fetch(`https://api.github.com/gists/${gistId}`, { headers: {'Authorization': `token ${window.app.githubToken}`} });
+                if(!gistResp.ok) throw new Error('Error al descargar.');
+                const fullGist = await gistResp.json();
+                const targetFile = fullGist.files[GIST_FILENAME];
+                if (!targetFile) throw new Error(`Archivo ${GIST_FILENAME} no encontrado.`);
+                const data = JSON.parse(targetFile.content);
+                if(data.config && data.requests) {
+                    window.app.config = data.config; window.app.requests = data.requests;
+                    window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name));
+                    renderAll(); renderCalendar(); window.app.renderSummaryTable(); window.app.saveLocal();
+                    showNotification('¡Restaurado correctamente!');
+                    
+                    // Guardar información de última actualización
+                    saveLastUpdate('github');
+                    
+                    // Verificar conflictos después de cargar
+                    const conflicts = findDateConflicts();
+                    if (conflicts.length > 0) {
+                        setTimeout(() => {
+                            showDateConflictsModal(conflicts);
+                        }, 500);
+                    }
+                } else throw new Error('Formato incorrecto.');
+            } catch (e) { console.error(e); showNotification(e.message, 'error'); }
+        };
+
+        window.app.switchTab = (tabName) => {
+            ['config', 'calendar', 'stats'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                const view = document.getElementById(`view-${t}`);
+                if (t === tabName) { btn.classList.replace('tab-inactive', 'tab-active'); view.classList.remove('hidden'); } 
+                else { btn.classList.replace('tab-active', 'tab-inactive'); view.classList.add('hidden'); }
+            });
+            if (tabName === 'calendar') renderCalendar();
+            if (tabName === 'stats') { window.app.renderSummaryTable(); window.app.renderReportTable(); }
+        };
+
+        function showNotification(msg, type = 'success') {
+            const area = document.getElementById('notification-area');
+            const box = document.getElementById('notification-msg');
+            box.textContent = msg;
+            box.className = 'alert shadow-lg fw-bold text-white mb-0'; 
+            if(type === 'error') box.classList.add('bg-danger'); else if(type === 'info') box.classList.add('bg-primary'); else box.classList.add('bg-green-600');
+            area.classList.remove('hidden'); setTimeout(() => area.classList.add('hidden'), 3000);
+        }
+        window.app.showNotification = showNotification;
+
+        window.app.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+
+        window.app.showTooltip = (e, htmlContent) => {
+            const tooltip = document.getElementById('custom-tooltip');
+            tooltip.innerHTML = htmlContent; tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 10) + 'px'; tooltip.style.top = (e.clientY + 10) + 'px';
+        };
+        window.app.hideTooltip = () => { document.getElementById('custom-tooltip').style.display = 'none'; };
+
+        window.app.exportPDF = (type) => {
+            const { jsPDF } = window.jspdf; 
+            const doc = new jsPDF();
+            const timestamp = getTimestamp();
+            
+            if (type === 'summary') {
+                doc.text(`Estado del profesorado`, 14, 15);
+                doc.autoTable({ html: '#table-summary', startY: 20 });
+                doc.save(`Estado del profesorado ${timestamp}.pdf`);
+            } else {
+                doc.text(`Informe detallado`, 14, 15);
+                doc.autoTable({ html: '#table-report', startY: 20 });
+                doc.save(`Informe detallado ${timestamp}.pdf`);
+            }
+        };        
+        
+        window.app.exportJSON = () => {
+            const timestamp = getTimestamp();
+            const data = JSON.stringify({ config: window.app.config, requests: window.app.requests }, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `DatosPermisos_${timestamp}.json`;
+            a.click();
+        };
+        
+        // Nueva función para mostrar permisos por tipo
+        window.app.showTeacherPermitsByType = function(teacherId, teacherName, type) {
+            // Filtrar solicitudes del profesor por tipo
+            const requests = window.app.requests.filter(r => r.teacherId === teacherId && r.type === type);
+            
+            // Ordenar por fecha
+            requests.sort((a, b) => a.date.localeCompare(b.date));
+            
+            // Configurar el título del modal
+            const typeLabels = {
+                'paid_teaching': 'Retribuidos Lectivos',
+                'paid_non_teaching': 'Retribuidos NO Lectivos', 
+                'unpaid': 'No Retribuidos'
+            };
+            
+            document.getElementById('modal-teacher-permits-title').innerText = `${teacherName} - ${typeLabels[type] || type}`;
+            
+            // Construir el cuerpo del modal
+            const modalBody = document.getElementById('modal-teacher-permits-body');
+            if (requests.length === 0) {
+                modalBody.innerHTML = '<p class="text-muted text-center">No hay permisos de este tipo.</p>';
+            } else {
+                let html = '<div class="list-group">';
+                requests.forEach(req => {
+                    const date = new Date(req.date);
+                    const dateStr = date.toLocaleDateString('es-ES', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                    });
+                    
+                    // Formatear la fecha con la primera letra en mayúscula
+                    const formattedDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+                    
+                    // Determinar el color del badge según el tipo
+                    let badgeClass = '';
+                    switch(type) {
+                        case 'paid_teaching': badgeClass = 'bg-primary-subtle text-primary'; break;
+                        case 'paid_non_teaching': badgeClass = 'bg-warning-subtle text-warning-emphasis'; break;
+                        case 'unpaid': badgeClass = 'bg-secondary-subtle text-secondary-emphasis'; break;
+                        default: badgeClass = 'bg-light text-dark';
+                    }
+                    
+                    html += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-medium">${formattedDate}</div>
+                                <small class="text-muted">${req.date}</small>
+                            </div>
+                            <span class="badge ${badgeClass}">${typeLabels[type] || type}</span>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                modalBody.innerHTML = html;
+            }
+            
+            // Mostrar el modal
+            document.getElementById('modal-teacher-permits').classList.remove('hidden');
+            lucide.createIcons();
+        };
+        
+        window.app.importJSON = async (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            try {
+                const text = await file.text(); const data = JSON.parse(text);
+                if (data.config && data.requests) {
+                    window.app.config = data.config; window.app.requests = data.requests;
+                    window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name)); 
+                    renderAll(); renderCalendar(); window.app.saveLocal(); showNotification('Datos importados');
+                    
+                    // Guardar información de última actualización
+                    saveLastUpdate('local');
+                    
+                    // Verificar conflictos después de importar
+                    const conflicts = findDateConflicts();
+                    if (conflicts.length > 0) {
+                        setTimeout(() => {
+                            showDateConflictsModal(conflicts);
+                        }, 500);
+                    }
+                }
+            } catch (err) { showNotification('Error JSON', 'error'); }
+            e.target.value = ''; 
+        };
+
+        window.app.saveLocal = () => {
+            localStorage.setItem('schoolConfig', JSON.stringify(window.app.config));
+            localStorage.setItem('schoolRequests', JSON.stringify(window.app.requests));
+            showNotification('Datos guardados en Local');
+            
+            // Guardar información de última actualización
+            saveLastUpdate('local');
+        };
+
+        // FUNCIÓN PARA REINICIAR BASE DE DATOS
+        window.app.resetDatabase = function() {
+            const confirmation = confirm(
+                "⚠️ ADVERTENCIA CRÍTICA ⚠️\n\n" +
+                "Estás a punto de eliminar TODOS los datos de la aplicación:\n" +
+                "• Configuración del curso\n" +
+                "• Lista de profesorado\n" +
+                "• Festivos locales y provinciales\n" +
+                "• Días no disponibles y no lectivos\n" +
+                "• Todas las solicitudes de permisos\n\n" +
+                "¿Estás completamente seguro? Esta acción NO se puede deshacer.\n\n" +
+                "Recomendamos exportar una copia de seguridad primero."
+            );
+            
+            if (!confirmation) return;
+            
+            // Eliminar datos de localStorage
+            localStorage.removeItem('schoolConfig');
+            localStorage.removeItem('schoolRequests');
+            // Mantener el token de GitHub por si se quiere usar después
+            // localStorage.removeItem('githubToken');
+            
+            // Resetear configuración
+            window.app.config = { 
+                startYear: new Date().getFullYear(), 
+                teachers: [], 
+                localHolidays: [], 
+                provHolidays: [], 
+                unavailableDays: [],
+                nonTeachingDays: [] 
+            };
+            window.app.requests = [];
+            
+            // Guardar configuración vacía
+            window.app.saveLocal();
+            
+            // Recargar la aplicación
+            showNotification('Base de datos reiniciada. Recargando aplicación...', 'info');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        };
+
+        // FUNCIÓN PARA EXPORTAR COPIA ANTES DE REINICIAR
+        window.app.exportBackupBeforeReset = function() {
+            const timestamp = getTimestamp();
+            const data = JSON.stringify({ 
+                config: window.app.config, 
+                requests: window.app.requests,
+                backupDate: new Date().toISOString(),
+                note: "Copia de seguridad antes de reiniciar la base de datos"
+            }, null, 2);
+            
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Backup_Antes_Reinicio_${timestamp}.json`;
+            a.click();
+            
+            showNotification('Copia de seguridad exportada. Ahora puedes reiniciar la base de datos.', 'info');
+        };
+
+        window.app.handleExcelUpload = async (e) => {
+            const file = e.target.files[0]; if(!file) return;
+            try {
+                const data = await file.arrayBuffer();
+                const wb = XLSX.read(data, {type:'array'});
+                const jsonData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+                let added = 0; const existing = new Set(window.app.config.teachers.map(t => t.name.toLowerCase()));
+                jsonData.forEach(row => {
+                    if(row && row[0]) {
+                        const val = String(row[0]).trim();
+                        if(!['nombre','profesor'].includes(val.toLowerCase()) && val.length > 2 && !existing.has(val.toLowerCase())) {
+                            window.app.config.teachers.push({ id: crypto.randomUUID(), name: val });
+                            existing.add(val.toLowerCase()); added++;
+                        }
+                    }
+                });
+                if(added>0) { window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name)); renderAll(); showNotification(`Importados ${added}`); }
+            } catch(err) { showNotification('Error Excel', 'error'); }
+            e.target.value = '';
+        };
+
+        function renderAll() {
+            document.getElementById('input-start-year').value = window.app.config.startYear;
+            document.getElementById('text-end-year').innerText = `→ Finaliza en Junio de ${window.app.config.startYear + 1}`;
+            const listT = document.getElementById('list-teachers'); listT.innerHTML = '';
+            document.getElementById('teacher-count').innerText = `Listado (${window.app.config.teachers.length})`;
+            window.app.config.teachers.forEach(t => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center bg-light small';
+                li.innerHTML = `<span>${t.name}</span> <button onclick="window.app.removeTeacher('${t.id}')" class="btn btn-link p-0 text-danger"><i data-lucide="trash-2" style="width:16px"></i></button>`;
+                listT.appendChild(li);
+            });
+            renderHolidayList('local', 'list-local-holidays');
+            renderHolidayList('provincial', 'list-prov-holidays');
+            renderHolidayList('unavailable', 'list-unavailable-days');
+            renderHolidayList('nonTeaching', 'list-non-teaching-days');
+            lucide.createIcons();
+        }
+
+        function renderHolidayList(type, containerId) {
+            const container = document.getElementById(containerId);
+            let list = []; let colorClass = '';
+            if (type === 'local') { list = window.app.config.localHolidays; colorClass = 'bg-purple-100 text-purple-700'; }
+            else if (type === 'provincial') { list = window.app.config.provHolidays; colorClass = 'bg-orange-100 text-orange-700'; }
+            else if (type === 'unavailable') { list = window.app.config.unavailableDays || []; colorClass = 'bg-gray-100 text-gray-700'; }
+            else if (type === 'nonTeaching') { list = window.app.config.nonTeachingDays || []; colorClass = 'bg-yellow-100 text-yellow-700'; }
+            container.innerHTML = '';
+            if(list.length === 0) { container.innerHTML = '<span class="text-secondary small fst-italic">Ninguno</span>'; return; }
+            list.forEach(date => {
+                const span = document.createElement('span');
+                span.className = `${colorClass} px-2 py-1 rounded small d-flex align-items-center gap-1 fw-bold border border-light`;
+                span.innerHTML = `${new Date(date).toLocaleDateString()} <i data-lucide="x" style="width:12px; cursor:pointer" onclick="window.app.removeHoliday('${type}', '${date}')"></i>`;
+                container.appendChild(span);
+            });
+        }
+
+        window.app.updateConfig = (key) => { if(key === 'year') { window.app.config.startYear = parseInt(document.getElementById('input-start-year').value); renderAll(); }};
+        
+        window.app.addTeacherManual = (e) => { 
+            e.preventDefault(); 
+            const n = document.getElementById('input-new-teacher').value.trim(); 
+            if(n){ window.app.config.teachers.push({id:crypto.randomUUID(), name:n}); window.app.config.teachers.sort((a,b)=>a.name.localeCompare(b.name)); document.getElementById('input-new-teacher').value=''; renderAll(); }
+        };
+        
+        window.app.removeTeacher = (id) => { window.app.config.teachers = window.app.config.teachers.filter(t => t.id !== id); renderAll(); };
+        
+        window.app.openDateModal = (type) => { 
+            window.app.tempHolidayType = type; 
+            document.getElementById('modal-holiday').classList.remove('hidden'); 
+            
+            // Ocultar advertencia de conflicto inicialmente
+            document.getElementById('date-conflict-warning').classList.add('hidden');
+            
+            const endContainer = document.getElementById('container-end-date');
+            if(type === 'nonTeaching') endContainer.classList.remove('hidden'); 
+            else endContainer.classList.add('hidden');
+            
+            // Limpiar campos
+            document.getElementById('input-holiday-date').value = '';
+            document.getElementById('input-holiday-end-date').value = '';
+            
+            // Configurar título según tipo
+            const titles = {
+                local: 'Añadir Festivo Local',
+                provincial: 'Añadir Festivo Provincial',
+                unavailable: 'Añadir Día No Disponible',
+                nonTeaching: 'Añadir Tramo No Lectivo'
+            };
+            document.getElementById('modal-holiday-title').textContent = titles[type] || 'Añadir fecha';
+            
+            // Agregar listener para verificar conflictos al cambiar la fecha
+            document.getElementById('input-holiday-date').addEventListener('change', function() {
+                window.app.checkDateConflict(this.value, type);
+            });
+        };
+        
+        // Función para verificar si una fecha ya existe en otras categorías
+        window.app.checkDateConflict = function(date, targetType) {
+            if (!date) return;
+            
+            const conflictTypes = [];
+            const conflictLabels = {
+                local: 'Festivos Locales',
+                provincial: 'Festivos Provinciales',
+                unavailable: 'Días No Disponibles',
+                nonTeaching: 'Días No Lectivos'
+            };
+            
+            // Verificar en cada categoría excepto en la destino
+            if (targetType !== 'local' && window.app.config.localHolidays.includes(date)) {
+                conflictTypes.push('local');
+            }
+            if (targetType !== 'provincial' && window.app.config.provHolidays.includes(date)) {
+                conflictTypes.push('provincial');
+            }
+            if (targetType !== 'unavailable' && (window.app.config.unavailableDays || []).includes(date)) {
+                conflictTypes.push('unavailable');
+            }
+            if (targetType !== 'nonTeaching' && (window.app.config.nonTeachingDays || []).includes(date)) {
+                conflictTypes.push('nonTeaching');
+            }
+            
+            if (conflictTypes.length > 0) {
+                const conflictMessage = `Esta fecha ya está en: ${conflictTypes.map(t => conflictLabels[t]).join(', ')}. Se moverá a ${conflictLabels[targetType]}.`;
+                document.getElementById('conflict-message').textContent = conflictMessage;
+                document.getElementById('date-conflict-warning').classList.remove('hidden');
+                return true;
+            } else {
+                document.getElementById('date-conflict-warning').classList.add('hidden');
+                return false;
+            }
+        };
+        
+        window.app.removeHoliday = (type, date) => { 
+            const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':(type==='unavailable'?'unavailableDays':'nonTeachingDays'));
+            window.app.config[target] = window.app.config[target].filter(d => d !== date); 
+            renderAll(); 
+            renderCalendar();
+        };
+        
+        window.app.clearHolidays = (type) => {
+            const map = { local: 'localHolidays', provincial: 'provHolidays', unavailable: 'unavailableDays', nonTeaching: 'nonTeachingDays' };
+            if(confirm(`¿Borrar TODOS los días de esta categoría?`)) { 
+                window.app.config[map[type]] = []; 
+                renderAll(); 
+                renderCalendar(); 
+                showNotification(`Todos los días eliminados de la categoría.`); 
+            }
+        };
+
+        window.app.bulkDeleteRequests = () => {
+            const pt = document.getElementById('del-type-paid-teaching').checked;
+            const pnt = document.getElementById('del-type-paid-non-teaching').checked;
+            const u = document.getElementById('del-type-unpaid').checked;
+
+            if(!pt && !pnt && !u) return alert("Selecciona al menos un tipo.");
+            if(!confirm("ADVERTENCIA: ¿Eliminar permanentemente?")) return;
+
+            const typesToDelete = [];
+            if(pt) typesToDelete.push('paid_teaching');
+            if(pnt) typesToDelete.push('paid_non_teaching');
+            if(u) typesToDelete.push('unpaid');
+
+            const initialCount = window.app.requests.length;
+            window.app.requests = window.app.requests.filter(r => !typesToDelete.includes(r.type));
+            const deletedCount = initialCount - window.app.requests.length;
+
+            window.app.saveLocal(); 
+
+            showNotification(`Se han eliminado ${deletedCount} solicitudes.`);
+            
+            // FIX: Actualizar todas las vistas
+            renderCalendar(); 
+            window.app.renderSummaryTable(); 
+            window.app.renderReportTable();
+        };
+        
+        window.app.confirmAddHoliday = () => {
+            const ds = document.getElementById('input-holiday-date').value; 
+            if(!ds) return;
+            const type = window.app.tempHolidayType;
+            const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':(type==='unavailable'?'unavailableDays':'nonTeachingDays'));
+            if(!window.app.config[target]) window.app.config[target] = [];
+            
+            // FUNCIÓN AUXILIAR PARA ELIMINAR FECHA DE OTRAS CATEGORÍAS
+            const removeDateFromOtherCategories = (dateStr, currentType) => {
+                const allTypes = ['localHolidays', 'provHolidays', 'unavailableDays', 'nonTeachingDays'];
+                allTypes.forEach(t => {
+                    if (t !== currentType && window.app.config[t]) {
+                        window.app.config[t] = window.app.config[t].filter(d => d !== dateStr);
+                    }
+                });
+            };
+            
+            // Verificar si hay conflicto y preguntar al usuario
+            const hasConflict = window.app.checkDateConflict(ds, type);
+            
+            if(type === 'nonTeaching') {
+                const de = document.getElementById('input-holiday-end-date').value; 
+                if(!de) return alert("Indica fecha de fin.");
+                let curr = new Date(ds), end = new Date(de);
+                if (curr > end) {
+                    alert("La fecha de inicio debe ser anterior a la fecha de fin.");
+                    return;
+                }
+                
+                // Preguntar si hay conflictos en el rango
+                let hasRangeConflict = false;
+                const tempDate = new Date(curr);
+                while (tempDate <= end) {
+                    const checkDate = tempDate.toISOString().split('T')[0];
+                    if (window.app.checkDateConflict(checkDate, type)) {
+                        hasRangeConflict = true;
+                    }
+                    tempDate.setDate(tempDate.getDate() + 1);
+                }
+                
+                if (hasRangeConflict && !confirm("Algunos días del rango ya están en otras categorías. ¿Continuar? (Se eliminarán de las otras categorías)")) {
+                    return;
+                }
+                
+                while(curr <= end) {
+                    const dStr = curr.toISOString().split('T')[0];
+                    // Eliminar de otras categorías antes de añadir
+                    removeDateFromOtherCategories(dStr, target);
+                    if(!window.app.config[target].includes(dStr)) window.app.config[target].push(dStr);
+                    curr.setDate(curr.getDate()+1);
+                }
+            } else { 
+                // Para fecha única, preguntar si hay conflicto
+                if (hasConflict && !confirm("Esta fecha ya está en otra categoría. ¿Moverla a la nueva categoría?")) {
+                    return;
+                }
+                // Eliminar de otras categorías antes de añadir
+                removeDateFromOtherCategories(ds, target);
+                if(!window.app.config[target].includes(ds)) window.app.config[target].push(ds); 
+            }
+            window.app.config[target].sort(); 
+            window.app.closeModal('modal-holiday'); 
+            renderAll();
+            renderCalendar();
+            showNotification('Fecha añadida correctamente.');
+        };
+
+        // Funciones para manejar conflictos de días en múltiples categorías
+        window.app.updateConflictSelection = function(index, categoryName) {
+            // Esta función se llama cuando el usuario selecciona una categoría para un conflicto
+            // Buscamos los conflictos actuales
+            const conflicts = findDateConflicts();
+            if (index >= 0 && index < conflicts.length) {
+                conflicts[index].selectedCategory = categoryName;
+                
+                // Actualizar la apariencia del elemento
+                const conflictItems = document.querySelectorAll('.conflict-day-item');
+                if (conflictItems[index]) {
+                    if (categoryName) {
+                        conflictItems[index].classList.add('resolved');
+                    } else {
+                        conflictItems[index].classList.remove('resolved');
+                    }
+                }
+            }
+        };
+        
+        window.app.ignoreAllConflicts = function() {
+            if (confirm("¿Ignorar todos los conflictos? Esto puede causar problemas en la visualización del calendario.")) {
+                window.app.closeModal('modal-date-conflicts');
+                showNotification('Conflictos ignorados. Puede revisarlos más tarde.', 'info');
+            }
+        };
+        
+        window.app.resolveAllConflicts = function() {
+            const conflicts = findDateConflicts();
+            let resolvedCount = 0;
+            
+            conflicts.forEach((conflict, index) => {
+                const select = document.querySelector(`select[data-conflict-index="${index}"]`);
+                if (select && select.value) {
+                    const selectedCategory = select.value;
+                    const date = conflict.date;
+                    
+                    // Eliminar de todas las categorías
+                    ['localHolidays', 'provHolidays', 'unavailableDays', 'nonTeachingDays'].forEach(category => {
+                        if (window.app.config[category]) {
+                            window.app.config[category] = window.app.config[category].filter(d => d !== date);
+                        }
+                    });
+                    
+                    // Añadir a la categoría seleccionada
+                    if (!window.app.config[selectedCategory].includes(date)) {
+                        window.app.config[selectedCategory].push(date);
+                        window.app.config[selectedCategory].sort();
+                    }
+                    
+                    resolvedCount++;
+                }
+            });
+            
+            if (resolvedCount > 0) {
+                window.app.saveLocal();
+                renderAll();
+                renderCalendar();
+                showNotification(`${resolvedCount} conflicto(s) resuelto(s).`);
+            }
+            
+            window.app.closeModal('modal-date-conflicts');
+            
+            // Verificar si aún quedan conflictos
+            const remainingConflicts = findDateConflicts();
+            if (remainingConflicts.length > 0) {
+                setTimeout(() => {
+                    showDateConflictsModal(remainingConflicts);
+                }, 500);
+            }
+        };
+
+        function renderCalendar() {
+            const container = document.getElementById('calendar-grid'); container.innerHTML = '';
+            const y = window.app.config.startYear;
+            const months = [ {y,m:8},{y,m:9},{y,m:10},{y,m:11},{y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5} ];
+            const mNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+            months.forEach(item => {
+                const col = document.createElement('div'); col.className = 'col-md-6 col-lg-4';
+                const card = document.createElement('div'); card.className = "card h-100 shadow-sm border-0";
+                let html = `<div class="card-header text-center fw-bold bg-light text-secondary border-bottom-0">${mNames[item.m]} ${item.y}</div>`;
+                html += `<div class="bg-light py-1 text-center small text-secondary border-top" style="display:grid; grid-template-columns: repeat(7, 1fr)"><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>`;
+                html += `<div class="calendar-grid-7 border-top">`;
+                const dim = new Date(item.y, item.m+1, 0).getDate();
+                const off = (new Date(item.y, item.m, 1).getDay() + 6) % 7;
+                for(let i=0; i<off; i++) html += `<div class="bg-light"></div>`;
+                for(let d=1; d<=dim; d++) {
+                    const dateStr = `${item.y}-${String(item.m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const day = new Date(item.y, item.m, d).getDay();
+                    const isW = day===0||day===6;
+                    const isL = window.app.config.localHolidays.includes(dateStr);
+                    const isP = window.app.config.provHolidays.includes(dateStr);
+                    const isU = (window.app.config.unavailableDays||[]).includes(dateStr);
+                    const isN = (window.app.config.nonTeachingDays||[]).includes(dateStr);
+                    const reqs = window.app.requests.filter(r => r.date === dateStr);
+                    let cls = "calendar-cell"; let num = "small fw-medium";
+                    // ORDEN DE PRIORIDAD: 1. Festivos locales, 2. Festivos provinciales, 3. No disponibles, 4. No lectivos
+                    if(isW) { cls += " cell-weekend"; num="text-danger opacity-50"; }
+                    else if(isL) { cls += " cell-local"; num="text-purple-700 fw-bold"; }
+                    else if(isP) { cls += " cell-prov"; num="text-orange-700 fw-bold"; }
+                    else if(isU) { cls += " cell-unavailable"; num="text-gray-700 fw-bold"; }
+                    else if(isN) { cls += " cell-non-teaching"; num="text-yellow-700 fw-bold"; }
+                    if(reqs.length>0) cls += " cell-active";
+                    let dots = ''; let attrs = '';
+                    if(reqs.length > 0) {
+                        dots = '<div class="mt-1 d-flex gap-1 flex-wrap justify-content-center w-100 px-1">';
+                        const max = 3; const count = reqs.length; const display = count > max ? max-1 : count;
+                        for(let i=0; i<display; i++) {
+                            const t = reqs[i].type; let c = 'bg-secondary';
+                            if(t === 'paid_teaching') c = 'bg-primary'; if(t === 'paid_non_teaching') c = 'bg-warning'; if(t === 'unpaid') c = 'bg-dark';
+                            dots += `<div class="rounded-circle ${c}" style="width:6px; height:6px"></div>`;
+                        }
+                        if(count > max) dots += `<div style="font-size:9px; line-height:6px" class="fw-bold text-secondary">+${count-(max-1)}</div>`; dots += '</div>';
+                        const tips = reqs.map(r => {
+                            const tn = window.app.config.teachers.find(tx=>tx.id===r.teacherId)?.name || '??';
+                            const tm = { 'paid_teaching':'Retr. Lect.', 'paid_non_teaching':'Retr. NO Lect.', 'unpaid':'No Retr.' };
+                            return `• ${tn} (${tm[r.type]})`;
+                        }).join('<br>').replace(/'/g, "&apos;");
+                        attrs = `onmouseenter="window.app.showTooltip(event, '${tips}')" onmouseleave="window.app.hideTooltip()"`;
+                    }
+                    const clk = (!isW && !isL && !isP && !isU) ? `onclick="window.app.openRequestModal('${dateStr}')"` : '';
+                    html += `<div class="${cls}" ${clk} ${attrs}><span class="${num}">${d}</span>${dots}</div>`;
+                }
+                html += `</div>`; card.innerHTML = html; col.appendChild(card); container.appendChild(col);
+            });
+        }
+
+        window.app.openRequestModal = (ds) => {
+            window.app.selectedDate = ds;
+            const isN = (window.app.config.nonTeachingDays||[]).includes(ds);
+            document.getElementById('modal-request-title').innerText = `Día: ${new Date(ds).toLocaleDateString()} ${isN?'(NO LECTIVO)':''}`;
+            const opt1 = document.getElementById('opt-paid-teaching');
+            const opt2 = document.getElementById('opt-paid-non-teaching');
+            const bulk = document.getElementById('bulk-action-container');
+            
+            // Obtener los radio buttons
+            const radio1 = document.getElementById('rt1');
+            const radio2 = document.getElementById('rt2');
+            const radio3 = document.getElementById('rt3');
+            
+            if (isN) {
+                opt1.classList.add('hidden');
+                opt2.classList.remove('hidden');
+                bulk.classList.remove('hidden');
+                // Establecer "Retribuido NO LECTIVO" como seleccionado por defecto
+                radio2.checked = true;
+            } else {
+                opt1.classList.remove('hidden');
+                opt2.classList.add('hidden');
+                bulk.classList.add('hidden');
+                // Establecer "Retribuido LECTIVO" como seleccionado por defecto
+                radio1.checked = true;
+            }
+            
+            // Asegurarse de que solo un radio esté marcado
+            if (isN) {
+                radio1.checked = false;
+                radio2.checked = true;
+                radio3.checked = false;
+            } else {
+                radio1.checked = true;
+                radio2.checked = false;
+                radio3.checked = false;
+            }
+            
+            const sel = document.getElementById('req-teacher-select'); sel.innerHTML='<option value="">-- Selecciona --</option>';
+            window.app.config.teachers.forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.innerText=t.name; sel.appendChild(o); });
+            const c = document.getElementById('request-list-container'); c.innerHTML='';
+            const reqs = window.app.requests.filter(r=>r.date===ds);
+            if(reqs.length===0) c.innerHTML='<p class="text-secondary small fst-italic">Ninguna.</p>';
+            else {
+                reqs.forEach(r=>{
+                    const name = window.app.config.teachers.find(t=>t.id===r.teacherId)?.name||'??';
+                    const lbl = {'paid_teaching':'Retr. Lect.','paid_non_teaching':'Retr. NO Lect.','unpaid':'No Retr.'}[r.type];
+                    let cls = '';
+                    if(r.type==='paid_teaching') cls = 'bg-primary-subtle text-primary border border-primary-subtle';
+                    if(r.type==='paid_non_teaching') cls = 'bg-warning-subtle text-warning-emphasis border border-warning-subtle';
+                    if(r.type==='unpaid') cls = 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle';
+                    const d=document.createElement('div'); d.className="d-flex justify-content-between align-items-center bg-light p-2 rounded border";
+                    d.innerHTML=`<div><span class="fw-bold small d-block">${name}</span><span class="badge rounded-pill ${cls}">${lbl}</span></div><button onclick="window.app.deleteRequest('${r.id}')" class="btn btn-sm text-danger p-0"><i data-lucide="trash-2" style="width:16px"></i></button>`;
+                    c.appendChild(d);
+                });
+                lucide.createIcons();
+            }
+            document.getElementById('modal-request').classList.remove('hidden');
+        };
+
+        window.app.deleteRequest = (id) => { 
+            if(confirm('¿Anular esta solicitud?')) { 
+                window.app.requests=window.app.requests.filter(r=>r.id!==id); 
+                window.app.saveLocal(); 
+                window.app.openRequestModal(window.app.selectedDate); 
+                
+                // FIX: Actualizar todas las vistas
+                renderCalendar(); 
+                window.app.renderSummaryTable(); 
+                window.app.renderReportTable();
+            }
+        };
+
+        window.app.submitRequest = () => {
+            const tid = document.getElementById('req-teacher-select').value; if(!tid) return alert('Selecciona profesor');
+            const type = document.querySelector('input[name="reqType"]:checked')?.value;
+            
+            // CORRECCIÓN 1: Verificar que se haya seleccionado un tipo de permiso
+            if (!type) {
+                alert('Debes seleccionar un tipo de permiso');
+                return;
+            }
+            
+            const ds = window.app.selectedDate; const isN = (window.app.config.nonTeachingDays||[]).includes(ds);
+            if(type==='paid_teaching' && isN) return alert('Error: Tipo lectivo en día no lectivo.');
+            if(type==='paid_non_teaching' && !isN) return alert('Error: Tipo no lectivo en día lectivo.');
+            if(window.app.requests.find(r=>r.date===ds && r.teacherId===tid)) return alert('Ya tiene solicitud hoy.');
+            if(!isN) { if(window.app.requests.filter(r=>r.date===ds).length >= 2) return alert('Límite diario (2) alcanzado.'); }
+            const treqs = window.app.requests.filter(r=>r.teacherId===tid);
+            if(type==='paid_teaching' && treqs.filter(r=>r.type==='paid_teaching').length>=2) return alert('Máximo 2 Retribuidos Lectivos.');
+            if(type==='paid_non_teaching' && treqs.filter(r=>r.type==='paid_non_teaching').length>=4) return alert('Máximo 4 Retribuidos No Lectivos.');
+            window.app.requests.push({id:crypto.randomUUID(), date:ds, teacherId:tid, type});
+            window.app.openRequestModal(ds); renderCalendar(); window.app.saveLocal();
+        };
+
+        window.app.submitBulkRequest = () => {
+            if(!confirm('¿Añadir a todo el claustro disponible?')) return;
+            const ds = window.app.selectedDate; const type = document.querySelector('input[name="reqType"]:checked')?.value;
+            
+            // CORRECCIÓN 2: Verificar que se haya seleccionado un tipo de permiso también para bulk
+            if (!type) {
+                alert('Debes seleccionar un tipo de permiso');
+                return;
+            }
+            
+            let add=0; 
+            window.app.config.teachers.forEach(t => {
+                if(window.app.requests.find(r=>r.date===ds && r.teacherId===t.id)) return;
+                const treqs = window.app.requests.filter(r=>r.teacherId===t.id);
+                if(type==='paid_non_teaching' && treqs.filter(r=>r.type==='paid_non_teaching').length>=4) return;
+                window.app.requests.push({id:crypto.randomUUID(), date:ds, teacherId:t.id, type}); add++;
+            });
+            window.app.openRequestModal(ds); renderCalendar(); window.app.saveLocal(); showNotification(`Añadidos: ${add}`);
+        };
+
+        window.app.renderSummaryTable = () => {
+            const tb=document.getElementById('table-summary-body'); tb.innerHTML='';
+            const filter = document.getElementById('summary-filter').value;
+            const teachersSorted = [...window.app.config.teachers].sort((a,b) => a.name.localeCompare(b.name));
+            if(teachersSorted.length === 0) { tb.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-muted">Sin datos.</td></tr>'; return; }
+            teachersSorted.forEach(t=>{
+                const rs=window.app.requests.filter(r=>r.teacherId===t.id);
+                const pt=rs.filter(r=>r.type==='paid_teaching').length;
+                const pnt=rs.filter(r=>r.type==='paid_non_teaching').length;
+                const u=rs.filter(r=>r.type==='unpaid').length;
+                
+                const hasRequests = (pt > 0 || pnt > 0 || u > 0);
+                if (filter === 'with' && !hasRequests) return;
+                if (filter === 'without' && hasRequests) return;
+
+                let statusHtml = '<span class="badge bg-success">Disponible</span>';
+                if (pt >= 2 && pnt >= 4) { statusHtml = '<span class="badge bg-danger">AGOTADO (Retr.)</span>'; } 
+                else if (pt >= 2) { statusHtml = '<span class="badge bg-warning text-dark">Solo No Lect. / No Retr.</span>'; } 
+                else if (pnt >= 4) { statusHtml = '<span class="badge bg-warning text-dark">Solo Lect. / No Retr.</span>'; }
+
+                const tr=document.createElement('tr');
+                // Modificamos las celdas para hacerlas clicables
+                tr.innerHTML=`
+                    <td class="fw-medium">${t.name}</td>
+                    <td class="text-center">
+                        <button class="btn btn-link p-0 text-decoration-none" onclick="window.app.showTeacherPermitsByType('${t.id}', '${t.name}', 'paid_teaching')">
+                            <span class="badge rounded-pill ${pt>=2?'bg-danger-subtle text-danger':'bg-primary-subtle text-primary'}">${pt} / 2</span>
+                        </button>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-link p-0 text-decoration-none" onclick="window.app.showTeacherPermitsByType('${t.id}', '${t.name}', 'paid_non_teaching')">
+                            <span class="badge rounded-pill ${pnt>=4?'bg-danger-subtle text-danger':'bg-warning-subtle text-warning-emphasis'}">${pnt} / 4</span>
+                        </button>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-link p-0 text-decoration-none" onclick="window.app.showTeacherPermitsByType('${t.id}', '${t.name}', 'unpaid')">
+                            <span class="badge rounded-pill bg-light text-dark border">${u}</span>
+                        </button>
+                    </td>
+                    <td class="text-center">${statusHtml}</td>
+                `;
+                tb.appendChild(tr);
+            });
+            lucide.createIcons();
+        };
+
+        window.app.renderReportTable = () => {
+            const s=document.getElementById('report-start').value; const e=document.getElementById('report-end').value;
+            const tb=document.getElementById('table-report-body');
+            if(!s||!e) return;
+            const res = window.app.requests.filter(r=>r.date>=s && r.date<=e).sort((a,b)=>a.date.localeCompare(b.date));
+            document.getElementById('report-count').innerText = res.length; tb.innerHTML='';
+            if(res.length===0) tb.innerHTML='<tr><td colspan="3" class="p-4 text-center text-muted">Sin datos.</td></tr>';
+            res.forEach(r=>{
+                const n=window.app.config.teachers.find(t=>t.id===r.teacherId)?.name||'??';
+                const l={'paid_teaching':'Retr. Lect.','paid_non_teaching':'Retr. NO Lect.','unpaid':'No Retr.'}[r.type];
+                const tr=document.createElement('tr');
+                tr.innerHTML=`<td>${new Date(r.date).toLocaleDateString()}</td><td class="fw-bold">${n}</td><td>${l}</td>`;
+                tb.appendChild(tr);
+            });
+        };
+
+        init();
+    </script>
+</body>
+</html>
