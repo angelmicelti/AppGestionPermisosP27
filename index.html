@@ -270,43 +270,18 @@
         </div>
 
         <div id="view-config" class="fade-in pb-5">
-            <!-- Acordeón 1: Datos del Curso -->
+            <!-- Acordeón 1: Configuración Nube (GitHub) -->
             <div class="accordion" id="accordionConfig">
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
                             <div class="d-flex align-items-center gap-2 w-100">
-                                <i data-lucide="calendar" style="width:18px"></i>
-                                <span class="fw-bold">1. Datos del Curso</span>
+                                <i data-lucide="github" style="width:18px"></i>
+                                <span class="fw-bold">1. Configuración Nube (GitHub)</span>
                             </div>
                         </button>
                     </h2>
                     <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
-                        <div class="accordion-body">
-                            <div class="card bg-white mb-0">
-                                <div class="card-body p-3">
-                                    <div class="d-flex align-items-center gap-3 flex-wrap mt-1">
-                                        <label class="fw-medium">Año de inicio (Septiembre):</label>
-                                        <input type="number" id="input-start-year" class="form-control w-auto" style="width: 120px;" onchange="window.app.updateConfig('year')">
-                                        <span class="text-secondary" id="text-end-year">→ Finaliza en Junio de ...</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Acordeón 2: Configuración Nube -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                            <div class="d-flex align-items-center gap-2 w-100">
-                                <i data-lucide="github" style="width:18px"></i>
-                                <span class="fw-bold">Configuración Nube (GitHub)</span>
-                            </div>
-                        </button>
-                    </h2>
-                    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
                         <div class="accordion-body">
                             <div class="card bg-white mb-0 border-start border-4 border-dark">
                                 <div class="card-body p-3">
@@ -335,13 +310,38 @@
                     </div>
                 </div>
                 
+                <!-- Acordeón 2: Datos del Curso -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="calendar" style="width:18px"></i>
+                                <span class="fw-bold">2. Datos del Curso</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white mb-0">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center gap-3 flex-wrap mt-1">
+                                        <label class="fw-medium">Año de inicio (Septiembre):</label>
+                                        <input type="number" id="input-start-year" class="form-control w-auto" style="width: 120px;" onchange="window.app.updateConfig('year')">
+                                        <span class="text-secondary" id="text-end-year">→ Finaliza en Junio de ...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Acordeón 3: Profesorado -->
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
                             <div class="d-flex align-items-center gap-2 w-100">
                                 <i data-lucide="users" style="width:18px"></i>
-                                <span class="fw-bold">2. Profesorado</span>
+                                <span class="fw-bold">3. Profesorado</span>
                             </div>
                         </button>
                     </h2>
@@ -379,7 +379,7 @@
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
                             <div class="d-flex align-items-center gap-2 w-100">
                                 <i data-lucide="flag" style="width:18px"></i>
-                                <span class="fw-bold">3. Festivos Locales</span>
+                                <span class="fw-bold">4. Festivos Locales</span>
                             </div>
                         </button>
                     </h2>
@@ -406,7 +406,7 @@
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
                             <div class="d-flex align-items-center gap-2 w-100">
                                 <i data-lucide="map-pin" style="width:18px"></i>
-                                <span class="fw-bold">4. Festivos Provinciales</span>
+                                <span class="fw-bold">5. Festivos Provinciales</span>
                             </div>
                         </button>
                     </h2>
@@ -427,13 +427,13 @@
                     </div>
                 </div>
                 
-                <!-- NUEVO Acordeón 6: Días No Disponibles -->
+                <!-- Acordeón 6: Días No Disponibles -->
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSix" aria-expanded="false" aria-controls="collapseSix">
                             <div class="d-flex align-items-center gap-2 w-100">
                                 <i data-lucide="x-circle" style="width:18px"></i>
-                                <span class="fw-bold">5. Días No Disponibles</span>
+                                <span class="fw-bold">6. Días No Disponibles</span>
                             </div>
                         </button>
                     </h2>
@@ -454,13 +454,13 @@
                     </div>
                 </div>
                 
-                <!-- Acordeón 7: Días No Lectivos (ahora será el séptimo) -->
+                <!-- Acordeón 7: Días No Lectivos -->
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSeven" aria-expanded="false" aria-controls="collapseSeven">
                             <div class="d-flex align-items-center gap-2 w-100">
                                 <i data-lucide="book-x" style="width:18px"></i>
-                                <span class="fw-bold">6. Días No Lectivos</span>
+                                <span class="fw-bold">7. Días No Lectivos</span>
                             </div>
                         </button>
                     </h2>
@@ -481,13 +481,13 @@
                     </div>
                 </div>
                 
-                <!-- Acordeón 8: Eliminar Permisos (ahora será el octavo) -->
+                <!-- Acordeón 8: Eliminar Permisos -->
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEight" aria-expanded="false" aria-controls="collapseEight">
                             <div class="d-flex align-items-center gap-2 w-100">
                                 <i data-lucide="trash-2" style="width:18px"></i>
-                                <span class="fw-bold">7. Eliminar Permisos Almacenados</span>
+                                <span class="fw-bold">8. Eliminar Permisos Almacenados</span>
                             </div>
                         </button>
                     </h2>
@@ -520,6 +520,40 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Acordeón 9: Reiniciar base de datos -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNine" aria-expanded="false" aria-controls="collapseNine">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="database" style="width:18px"></i>
+                                <span class="fw-bold">9. Reiniciar base de datos</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapseNine" class="accordion-collapse collapse" data-bs-parent="#accordionConfig">
+                        <div class="accordion-body">
+                            <div class="card bg-white border border-danger-subtle">
+                                <div class="card-body p-3">
+                                    <div class="bg-danger bg-opacity-10 p-3 rounded">
+                                        <p class="text-danger small fw-bold mb-3">
+                                            <i data-lucide="alert-triangle" style="width:18px" class="me-1"></i>
+                                            ADVERTENCIA: Esta acción eliminará todos los datos de la aplicación, incluyendo configuración, profesorado, festivos y solicitudes. No se puede deshacer.
+                                        </p>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <button onclick="window.app.resetDatabase()" class="btn btn-danger btn-sm fw-bold d-flex align-items-center gap-2 shadow-sm">
+                                                <i data-lucide="trash" style="width:16px"></i> Reiniciar base de datos
+                                            </button>
+                                            <button onclick="window.app.exportBackupBeforeReset()" class="btn btn-outline-danger btn-sm fw-bold d-flex align-items-center gap-2">
+                                                <i data-lucide="download" style="width:16px"></i> Exportar copia antes de reiniciar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -528,7 +562,7 @@
                 <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-danger bg-opacity-25 rounded"></div> Finde/Festivo</div>
                 <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-purple-100 rounded"></div> F. Local</div>
                 <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-orange-100 rounded"></div> F. Provincial</div>
-                <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-gray-100 border border-gray-300 rounded"></div> No Disponible</div> <!-- NUEVO -->
+                <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-gray-100 border border-gray-300 rounded"></div> No Disponible</div>
                 <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-yellow-100 border border-warning rounded"></div> No Lectivo</div>
                 <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="border border-2 border-primary rounded"></div> Solicitud activa</div>
             </div>
@@ -653,7 +687,7 @@
                     <i data-lucide="save" style="width:16px"></i> Guardar Local
                 </button>
                 <button onclick="window.app.saveGitHub()" class="btn btn-dark d-flex align-items-center gap-2 btn-sm">
-                    <i data-lucide="cloud" style="width:16px"></i> Guardar Nube (GitHub)
+                    <i data-lucide="cloud" style="width:16px"></i> Guardar/Actualizar Nube (GitHub)
                 </button>
                 <button onclick="window.app.loadGitHub()" class="btn btn-outline-dark d-flex align-items-center gap-2 btn-sm">
                     <i data-lucide="download-cloud" style="width:16px"></i> Cargar Nube
@@ -849,6 +883,83 @@
             </div>
             <div class="p-3 bg-light rounded-bottom d-flex justify-content-end">
                 <button onclick="window.app.closeModal('modal-help')" class="btn btn-primary btn-sm">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO: Opciones de guardado en GitHub -->
+    <div id="save-options-modal" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-4 hidden">
+        <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 500px; max-height: 80vh;">
+            <div class="bg-primary text-white p-3 d-flex justify-content-between align-items-center rounded-top">
+                <h3 class="h6 fw-bold mb-0 d-flex align-items-center gap-2">
+                    <i data-lucide="cloud"></i> Opciones de guardado
+                </h3>
+                <button onclick="document.getElementById('save-options-modal').classList.add('hidden')" class="btn btn-sm text-white p-0">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <p class="mb-4">Se han encontrado <span id="found-backups-count">0</span> copias de seguridad existentes. ¿Qué deseas hacer?</p>
+                
+                <div class="vstack gap-3">
+                    <button onclick="window.app.handleSaveOption('overwrite', 'save-options-modal')" 
+                            class="btn btn-primary d-flex align-items-center gap-2 justify-content-start text-start">
+                        <i data-lucide="save" style="width:20px"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">Sobrescribir última copia</div>
+                            <small class="d-block">Actualizará la copia más reciente</small>
+                        </div>
+                    </button>
+                    
+                    <button onclick="window.app.handleSaveOption('overwrite_selected', 'save-options-modal')" 
+                            class="btn btn-warning d-flex align-items-center gap-2 justify-content-start text-start">
+                        <i data-lucide="edit" style="width:20px"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">Seleccionar copia para sobrescribir</div>
+                            <small class="d-block">Elegirás qué copia actualizar</small>
+                        </div>
+                    </button>
+                    
+                    <button onclick="window.app.handleSaveOption('new', 'save-options-modal')" 
+                            class="btn btn-success d-flex align-items-center gap-2 justify-content-start text-start">
+                        <i data-lucide="plus-circle" style="width:20px"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">Crear nueva copia</div>
+                            <small class="d-block">Generarás una copia nueva (seguirán existiendo las anteriores)</small>
+                        </div>
+                    </button>
+                    
+                    <button onclick="window.app.handleSaveOption('cancel', 'save-options-modal')" 
+                            class="btn btn-outline-secondary mt-3">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO: Selección de gist para sobrescribir -->
+    <div id="gist-selection-modal" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center z-4 hidden">
+        <div class="bg-white rounded shadow-lg w-100 d-flex flex-column" style="max-width: 600px; max-height: 80vh;">
+            <div class="bg-warning text-dark p-3 d-flex justify-content-between align-items-center rounded-top">
+                <h3 class="h6 fw-bold mb-0 d-flex align-items-center gap-2">
+                    <i data-lucide="edit"></i> Seleccionar copia para sobrescribir
+                </h3>
+                <button onclick="document.getElementById('gist-selection-modal').classList.add('hidden')" class="btn btn-sm text-dark p-0">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="p-3 bg-light border-bottom small text-secondary">
+                Selecciona la copia que deseas sobrescribir (se perderán los datos antiguos):
+            </div>
+            <div class="p-0 overflow-auto flex-grow-1">
+                <div class="list-group list-group-flush" id="gist-selection-list"></div>
+            </div>
+            <div class="p-3 bg-light rounded-bottom d-flex justify-content-between align-items-center">
+                <button onclick="document.getElementById('gist-selection-modal').classList.add('hidden')" class="btn btn-secondary btn-sm">
+                    Cancelar
+                </button>
+                <div class="small text-muted"><span id="gist-count">0</span> copias encontradas</div>
             </div>
         </div>
     </div>
@@ -1097,7 +1208,7 @@
                 names.forEach(name => caches.delete(name));
             });
         }
-    };
+    });
 
     // ================================================
     // DETECCIÓN DE MODO OFFLINE/ONLINE
@@ -1173,7 +1284,7 @@
             }
             
             // Mantener solo datos esenciales en localStorage
-            const essentialKeys = ['githubToken', 'schoolConfig', 'schoolRequests', 'lastUpdate']; // Añadido lastUpdate
+            const essentialKeys = ['githubToken', 'schoolConfig', 'schoolRequests', 'lastUpdate'];
             const allKeys = Object.keys(localStorage);
             let removedCount = 0;
             
@@ -1222,7 +1333,7 @@
             const day = String(now.getDate()).padStart(2, '0');
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0'); // <-- Añadimos los segundos
+            const seconds = String(now.getSeconds()).padStart(2, '0');
             
             // Formato final: YYYY-MM-DD HH-MM-SS
             return `${year}-${month}-${day} ${hours}-${minutes}-${seconds}`;
@@ -1419,7 +1530,6 @@
 
         // Eliminamos la función toggleGithubConfig ya que ahora usamos acordeón de Bootstrap
         window.app.toggleGithubConfig = () => {
-            // Esta función ya no es necesaria porque usamos el acordeón de Bootstrap
             console.log("Función obsoleta - ahora usamos acordeón de Bootstrap");
         };
 
@@ -1454,23 +1564,218 @@
                 const user = await res.json();
                 window.app.githubToken = t; localStorage.setItem('githubToken', t);
                 updateAuthStatus(true, user.login); showNotification(`Token válido. Conectado como ${user.login}`);
-                // No necesitamos llamar a toggleGithubConfig porque el acordeón se maneja con Bootstrap
             } catch(e) { console.error(e); updateAuthStatus(false, "Token inválido"); showNotification("Error: El token no funciona", 'error'); }
         };
 
+        // MODIFICADA: Función para guardar en GitHub con opciones
         window.app.saveGitHub = async () => {
             if(!window.app.githubToken) return alert("Primero configura tu Token.");
+            
             try {
                 showNotification('Conectando con GitHub...', 'info');
+                
+                // Buscar gists existentes
+                const listResp = await fetch('https://api.github.com/gists', { 
+                    headers: {'Authorization': `token ${window.app.githubToken}`} 
+                });
+                
+                if(!listResp.ok) throw new Error(`Error al conectar: ${listResp.status}`);
+                
+                const gists = await listResp.json();
+                const relevantGists = gists.filter(g => 
+                    (g.files && g.files[GIST_FILENAME]) || 
+                    (g.description && g.description.includes('Gestor de Permisos'))
+                );
+                
+                let shouldOverwrite = false;
+                let existingGistId = null;
+                
+                if (relevantGists.length > 0) {
+                    // Actualizar contador en el modal
+                    document.getElementById('found-backups-count').textContent = relevantGists.length;
+                    
+                    // Preguntar al usuario qué hacer
+                    const choice = await window.app.showSaveOptionsModal(relevantGists);
+                    
+                    if (choice === 'overwrite') {
+                        // Ordenar por fecha más reciente
+                        relevantGists.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+                        existingGistId = relevantGists[0].id;
+                        shouldOverwrite = true;
+                    } else if (choice === 'overwrite_selected') {
+                        // El usuario seleccionará uno específico
+                        await window.app.showGistSelectionModal(relevantGists, 'overwrite');
+                        return; // La función modal manejará el proceso
+                    } else if (choice === 'new') {
+                        // Crear nuevo - continuar normalmente
+                        shouldOverwrite = false;
+                    } else {
+                        // Usuario canceló
+                        return;
+                    }
+                }
+                
                 const content = JSON.stringify({ config: window.app.config, requests: window.app.requests }, null, 2);
-                const body = { description: `${GIST_DESC} - ${new Date().toLocaleString()}`, public: false, files: { [GIST_FILENAME]: { content: content } }};
-                const resp = await fetch('https://api.github.com/gists', { method: 'POST', headers: {'Authorization': `token ${window.app.githubToken}`}, body: JSON.stringify(body)});
-                if(!resp.ok) throw new Error(`Error al guardar: ${resp.status}`);
-                showNotification('¡Datos guardados en GitHub!');
+                const timestamp = new Date().toLocaleString('es-ES');
+                
+                if (shouldOverwrite && existingGistId) {
+                    // Sobrescribir gist existente
+                    const body = { 
+                        description: `${GIST_DESC} - ${timestamp} (Sobrescrito)`, 
+                        files: { [GIST_FILENAME]: { content: content } } 
+                    };
+                    
+                    const resp = await fetch(`https://api.github.com/gists/${existingGistId}`, { 
+                        method: 'PATCH', 
+                        headers: {'Authorization': `token ${window.app.githubToken}`}, 
+                        body: JSON.stringify(body) 
+                    });
+                    
+                    if(!resp.ok) throw new Error(`Error al sobrescribir: ${resp.status}`);
+                    showNotification('¡Datos sobrescritos en GitHub!');
+                } else {
+                    // Crear nuevo gist
+                    const body = { 
+                        description: `${GIST_DESC} - ${timestamp}`, 
+                        public: false, 
+                        files: { [GIST_FILENAME]: { content: content } } 
+                    };
+                    
+                    const resp = await fetch('https://api.github.com/gists', { 
+                        method: 'POST', 
+                        headers: {'Authorization': `token ${window.app.githubToken}`}, 
+                        body: JSON.stringify(body) 
+                    });
+                    
+                    if(!resp.ok) throw new Error(`Error al guardar: ${resp.status}`);
+                    showNotification('¡Nueva copia creada en GitHub!');
+                }
                 
                 // Guardar información de última actualización
                 saveLastUpdate('github');
-            } catch (e) { console.error(e); showNotification(e.message, 'error'); }
+            } catch (e) { 
+                console.error(e); 
+                showNotification(e.message, 'error'); 
+            }
+        };
+
+        // NUEVA FUNCIÓN: Modal para opciones de guardado
+        window.app.showSaveOptionsModal = function(gists) {
+            return new Promise((resolve) => {
+                const modalId = 'save-options-modal';
+                const modal = document.getElementById(modalId);
+                
+                // Actualizar contador
+                document.getElementById('found-backups-count').textContent = gists.length;
+                
+                // Configurar resolución
+                window.app.handleSaveOption = function(option, modalId) {
+                    document.getElementById(modalId).classList.add('hidden');
+                    resolve(option);
+                };
+                
+                // Mostrar modal
+                modal.classList.remove('hidden');
+                lucide.createIcons();
+            });
+        };
+
+        // NUEVA FUNCIÓN: Modal para seleccionar gist a sobrescribir
+        window.app.showGistSelectionModal = function(gists, action) {
+            return new Promise((resolve) => {
+                const modalId = 'gist-selection-modal';
+                const modal = document.getElementById(modalId);
+                
+                // Ordenar por fecha (más reciente primero)
+                gists.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+                
+                // Actualizar contador
+                document.getElementById('gist-count').textContent = gists.length;
+                
+                // Llenar la lista
+                const listContainer = document.getElementById('gist-selection-list');
+                listContainer.innerHTML = '';
+                
+                gists.forEach((gist, index) => {
+                    const date = new Date(gist.updated_at).toLocaleString('es-ES');
+                    const desc = gist.description || '(Sin descripción)';
+                    const isMostRecent = index === 0;
+                    
+                    const item = document.createElement('div');
+                    item.className = `list-group-item list-group-item-action p-3 ${isMostRecent ? 'border-start border-3 border-warning' : ''}`;
+                    item.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <input class="form-check-input me-3" type="radio" name="selectedGist" id="gist-${gist.id}" value="${gist.id}">
+                            <label class="flex-grow-1" for="gist-${gist.id}" style="cursor: pointer;">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1 me-3">
+                                        <div class="fw-bold text-dark">${desc}</div>
+                                        <div class="small text-secondary mt-1 d-flex align-items-center gap-2">
+                                            <i data-lucide="clock" style="width:12px"></i> ${date}
+                                            ${isMostRecent ? '<span class="badge bg-warning text-dark">Más reciente</span>' : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    `;
+                    listContainer.appendChild(item);
+                    
+                    // Configurar evento de clic
+                    item.addEventListener('click', (e) => {
+                        if (!e.target.matches('input[type="radio"]')) {
+                            const radio = item.querySelector('input[type="radio"]');
+                            radio.checked = true;
+                        }
+                    });
+                });
+                
+                // Añadir botón de confirmar
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'btn btn-warning w-100 rounded-0 border-0';
+                confirmBtn.innerHTML = '<i data-lucide="save" class="me-2"></i> Sobrescribir copia seleccionada';
+                confirmBtn.onclick = async () => {
+                    const selectedRadio = document.querySelector('input[name="selectedGist"]:checked');
+                    if (!selectedRadio) {
+                        alert('Por favor, selecciona una copia para sobrescribir');
+                        return;
+                    }
+                    
+                    const gistId = selectedRadio.value;
+                    modal.classList.add('hidden');
+                    
+                    // Proceder a sobrescribir
+                    try {
+                        showNotification('Sobrescribiendo copia...', 'info');
+                        const content = JSON.stringify({ config: window.app.config, requests: window.app.requests }, null, 2);
+                        const timestamp = new Date().toLocaleString('es-ES');
+                        
+                        const body = { 
+                            description: `${GIST_DESC} - ${timestamp} (Sobrescrito)`, 
+                            files: { [GIST_FILENAME]: { content: content } } 
+                        };
+                        
+                        const resp = await fetch(`https://api.github.com/gists/${gistId}`, { 
+                            method: 'PATCH', 
+                            headers: {'Authorization': `token ${window.app.githubToken}`}, 
+                            body: JSON.stringify(body) 
+                        });
+                        
+                        if(!resp.ok) throw new Error(`Error al sobrescribir: ${resp.status}`);
+                        showNotification('¡Copia sobrescrita en GitHub!');
+                        saveLastUpdate('github');
+                    } catch (e) { 
+                        console.error(e); 
+                        showNotification(e.message, 'error'); 
+                    }
+                };
+                
+                listContainer.appendChild(confirmBtn);
+                
+                // Mostrar modal
+                modal.classList.remove('hidden');
+                lucide.createIcons();
+            });
         };
 
         window.app.loadGitHub = async () => {
@@ -1543,7 +1848,7 @@
             lucide.createIcons();
         };
 
-        // Nueva función para eliminar un gist - VERSIÓN CORREGIDA
+        // Nueva función para eliminar un gist
         window.app.deleteGist = async function(gistId, index) {
             // Obtener el elemento DOM correspondiente
             const gistElement = document.getElementById(`gist-item-${gistId}`);
@@ -1690,28 +1995,27 @@
         window.app.exportPDF = (type) => {
             const { jsPDF } = window.jspdf; 
             const doc = new jsPDF();
-            const timestamp = getTimestamp(); // <-- Llamamos a la función
+            const timestamp = getTimestamp();
             
             if (type === 'summary') {
                 doc.text(`Estado del profesorado`, 14, 15);
                 doc.autoTable({ html: '#table-summary', startY: 20 });
-                doc.save(`Estado del profesorado ${timestamp}.pdf`); // <-- Nombre con segundos
+                doc.save(`Estado del profesorado ${timestamp}.pdf`);
             } else {
                 doc.text(`Informe detallado`, 14, 15);
                 doc.autoTable({ html: '#table-report', startY: 20 });
-                doc.save(`Informe detallado ${timestamp}.pdf`); // <-- Nombre con segundos
+                doc.save(`Informe detallado ${timestamp}.pdf`);
             }
         };        
         
         window.app.exportJSON = () => {
-            const timestamp = getTimestamp(); // <-- Llamamos a la función
+            const timestamp = getTimestamp();
             const data = JSON.stringify({ config: window.app.config, requests: window.app.requests }, null, 2);
             const blob = new Blob([data], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            // Nombre del archivo JSON con segundos:
-            a.download = `DatosPermisos_${timestamp}.json`; 
+            a.download = `DatosPermisos_${timestamp}.json`;
             a.click();
         };
         
@@ -1811,6 +2115,69 @@
             saveLastUpdate('local');
         };
 
+        // FUNCIÓN PARA REINICIAR BASE DE DATOS
+        window.app.resetDatabase = function() {
+            const confirmation = confirm(
+                "⚠️ ADVERTENCIA CRÍTICA ⚠️\n\n" +
+                "Estás a punto de eliminar TODOS los datos de la aplicación:\n" +
+                "• Configuración del curso\n" +
+                "• Lista de profesorado\n" +
+                "• Festivos locales y provinciales\n" +
+                "• Días no disponibles y no lectivos\n" +
+                "• Todas las solicitudes de permisos\n\n" +
+                "¿Estás completamente seguro? Esta acción NO se puede deshacer.\n\n" +
+                "Recomendamos exportar una copia de seguridad primero."
+            );
+            
+            if (!confirmation) return;
+            
+            // Eliminar datos de localStorage
+            localStorage.removeItem('schoolConfig');
+            localStorage.removeItem('schoolRequests');
+            // Mantener el token de GitHub por si se quiere usar después
+            // localStorage.removeItem('githubToken');
+            
+            // Resetear configuración
+            window.app.config = { 
+                startYear: new Date().getFullYear(), 
+                teachers: [], 
+                localHolidays: [], 
+                provHolidays: [], 
+                unavailableDays: [],
+                nonTeachingDays: [] 
+            };
+            window.app.requests = [];
+            
+            // Guardar configuración vacía
+            window.app.saveLocal();
+            
+            // Recargar la aplicación
+            showNotification('Base de datos reiniciada. Recargando aplicación...', 'info');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        };
+
+        // FUNCIÓN PARA EXPORTAR COPIA ANTES DE REINICIAR
+        window.app.exportBackupBeforeReset = function() {
+            const timestamp = getTimestamp();
+            const data = JSON.stringify({ 
+                config: window.app.config, 
+                requests: window.app.requests,
+                backupDate: new Date().toISOString(),
+                note: "Copia de seguridad antes de reiniciar la base de datos"
+            }, null, 2);
+            
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Backup_Antes_Reinicio_${timestamp}.json`;
+            a.click();
+            
+            showNotification('Copia de seguridad exportada. Ahora puedes reiniciar la base de datos.', 'info');
+        };
+
         window.app.handleExcelUpload = async (e) => {
             const file = e.target.files[0]; if(!file) return;
             try {
@@ -1845,7 +2212,7 @@
             });
             renderHolidayList('local', 'list-local-holidays');
             renderHolidayList('provincial', 'list-prov-holidays');
-            renderHolidayList('unavailable', 'list-unavailable-days'); // NUEVO
+            renderHolidayList('unavailable', 'list-unavailable-days');
             renderHolidayList('nonTeaching', 'list-non-teaching-days');
             lucide.createIcons();
         }
@@ -1855,7 +2222,7 @@
             let list = []; let colorClass = '';
             if (type === 'local') { list = window.app.config.localHolidays; colorClass = 'bg-purple-100 text-purple-700'; }
             else if (type === 'provincial') { list = window.app.config.provHolidays; colorClass = 'bg-orange-100 text-orange-700'; }
-            else if (type === 'unavailable') { list = window.app.config.unavailableDays || []; colorClass = 'bg-gray-100 text-gray-700'; } // NUEVO
+            else if (type === 'unavailable') { list = window.app.config.unavailableDays || []; colorClass = 'bg-gray-100 text-gray-700'; }
             else if (type === 'nonTeaching') { list = window.app.config.nonTeachingDays || []; colorClass = 'bg-yellow-100 text-yellow-700'; }
             container.innerHTML = '';
             if(list.length === 0) { container.innerHTML = '<span class="text-secondary small fst-italic">Ninguno</span>'; return; }
@@ -1945,14 +2312,14 @@
         };
         
         window.app.removeHoliday = (type, date) => { 
-            const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':(type==='unavailable'?'unavailableDays':'nonTeachingDays'));  // MODIFICADO
+            const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':(type==='unavailable'?'unavailableDays':'nonTeachingDays'));
             window.app.config[target] = window.app.config[target].filter(d => d !== date); 
             renderAll(); 
             renderCalendar();
         };
         
         window.app.clearHolidays = (type) => {
-            const map = { local: 'localHolidays', provincial: 'provHolidays', unavailable: 'unavailableDays', nonTeaching: 'nonTeachingDays' }; // MODIFICADO
+            const map = { local: 'localHolidays', provincial: 'provHolidays', unavailable: 'unavailableDays', nonTeaching: 'nonTeachingDays' };
             if(confirm(`¿Borrar TODOS los días de esta categoría?`)) { 
                 window.app.config[map[type]] = []; 
                 renderAll(); 
@@ -1992,7 +2359,7 @@
             const ds = document.getElementById('input-holiday-date').value; 
             if(!ds) return;
             const type = window.app.tempHolidayType;
-            const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':(type==='unavailable'?'unavailableDays':'nonTeachingDays')); // MODIFICADO
+            const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':(type==='unavailable'?'unavailableDays':'nonTeachingDays'));
             if(!window.app.config[target]) window.app.config[target] = [];
             
             // FUNCIÓN AUXILIAR PARA ELIMINAR FECHA DE OTRAS CATEGORÍAS
@@ -2148,7 +2515,7 @@
                     const isW = day===0||day===6;
                     const isL = window.app.config.localHolidays.includes(dateStr);
                     const isP = window.app.config.provHolidays.includes(dateStr);
-                    const isU = (window.app.config.unavailableDays||[]).includes(dateStr); // NUEVO
+                    const isU = (window.app.config.unavailableDays||[]).includes(dateStr);
                     const isN = (window.app.config.nonTeachingDays||[]).includes(dateStr);
                     const reqs = window.app.requests.filter(r => r.date === dateStr);
                     let cls = "calendar-cell"; let num = "small fw-medium";
@@ -2156,7 +2523,7 @@
                     if(isW) { cls += " cell-weekend"; num="text-danger opacity-50"; }
                     else if(isL) { cls += " cell-local"; num="text-purple-700 fw-bold"; }
                     else if(isP) { cls += " cell-prov"; num="text-orange-700 fw-bold"; }
-                    else if(isU) { cls += " cell-unavailable"; num="text-gray-700 fw-bold"; } // NUEVO
+                    else if(isU) { cls += " cell-unavailable"; num="text-gray-700 fw-bold"; }
                     else if(isN) { cls += " cell-non-teaching"; num="text-yellow-700 fw-bold"; }
                     if(reqs.length>0) cls += " cell-active";
                     let dots = ''; let attrs = '';
@@ -2176,7 +2543,7 @@
                         }).join('<br>').replace(/'/g, "&apos;");
                         attrs = `onmouseenter="window.app.showTooltip(event, '${tips}')" onmouseleave="window.app.hideTooltip()"`;
                     }
-                    const clk = (!isW && !isL && !isP && !isU) ? `onclick="window.app.openRequestModal('${dateStr}')"` : ''; // MODIFICADO
+                    const clk = (!isW && !isL && !isP && !isU) ? `onclick="window.app.openRequestModal('${dateStr}')"` : '';
                     html += `<div class="${cls}" ${clk} ${attrs}><span class="${num}">${d}</span>${dots}</div>`;
                 }
                 html += `</div>`; card.innerHTML = html; col.appendChild(card); container.appendChild(col);
