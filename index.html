@@ -214,6 +214,32 @@
                 transform: translateY(10px);
             }
         }
+        
+        /* Estilos para bloqueo de interfaz */
+        #interface-blocker {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(4px);
+            z-index: 9998;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            display: none;
+        }
+        
+        #loading-message {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            color: #2563EB;
+            font-weight: bold;
+            text-align: center;
+            max-width: 80%;
+        }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -221,6 +247,13 @@
     <div id="app-loader">
         <div class="spinner mb-4"></div>
         <h2 class="h5 text-secondary fw-bold">Cargando sistema...</h2>
+    </div>
+    
+    <!-- Bloqueador de interfaz para cargas automáticas -->
+    <div id="interface-blocker">
+        <div class="spinner mb-4"></div>
+        <div id="loading-message">Cargando datos desde GitHub...</div>
+        <div class="small text-muted mt-2">Por favor, espera</div>
     </div>
 
     <div id="custom-tooltip"></div>
@@ -1309,7 +1342,8 @@
             tempHolidayType: null,
             selectedDate: null,
             githubToken: localStorage.getItem('githubToken') || '',
-            currentGists: [] // Almacenar los gists actuales
+            currentGists: [], // Almacenar los gists actuales
+            isLoadingFromGitHub: false // Estado para controlar carga automática
         };
 
         const GIST_FILENAME = 'gestor_permisos_data.json';
@@ -1602,15 +1636,158 @@
                 console.log('Guardado automático detenido');
             }
         }
+        
+        // ================================================
+        // FUNCIONES NUEVAS PARA CARGA AUTOMÁTICA
+        // ================================================
+        
+        // NUEVA FUNCIÓN: Bloquear la interfaz durante la carga
+        function blockInterface(message) {
+            const blocker = document.getElementById('interface-blocker');
+            const messageElement = document.getElementById('loading-message');
+            
+            if (blocker && messageElement) {
+                messageElement.textContent = message;
+                blocker.style.display = 'flex';
+                window.app.isLoadingFromGitHub = true;
+                
+                // Deshabilitar todos los botones y controles
+                document.querySelectorAll('button, input, select, .tab-btn').forEach(element => {
+                    element.disabled = true;
+                    element.style.pointerEvents = 'none';
+                    element.style.opacity = '0.6';
+                });
+            }
+        }
+        
+        // NUEVA FUNCIÓN: Desbloquear la interfaz
+        function unblockInterface() {
+            const blocker = document.getElementById('interface-blocker');
+            
+            if (blocker) {
+                blocker.style.display = 'none';
+                window.app.isLoadingFromGitHub = false;
+                
+                // Habilitar todos los botones y controles
+                document.querySelectorAll('button, input, select, .tab-btn').forEach(element => {
+                    element.disabled = false;
+                    element.style.pointerEvents = '';
+                    element.style.opacity = '';
+                });
+            }
+        }
+        
+        // NUEVA FUNCIÓN: Cargar la última versión desde GitHub automáticamente
+        window.app.loadLatestFromGitHubAuto = async function() {
+            if (!window.app.githubToken) {
+                console.log('No hay token de GitHub, saltando carga automática');
+                return false;
+            }
+            
+            // Bloquear interfaz
+            blockInterface('Cargando última versión desde GitHub...');
+            
+            try {
+                console.log('Carga automática: Buscando última versión en GitHub...');
+                
+                // Buscar gists existentes
+                const listResp = await fetch('https://api.github.com/gists', { 
+                    headers: {'Authorization': `token ${window.app.githubToken}`} 
+                });
+                
+                if (!listResp.ok) {
+                    throw new Error(`Error al conectar con GitHub: ${listResp.status}`);
+                }
+                
+                const gists = await listResp.json();
+                const relevantGists = gists.filter(g => 
+                    (g.files && g.files[GIST_FILENAME]) || 
+                    (g.description && g.description.includes('Gestor de Permisos'))
+                );
+                
+                if (relevantGists.length === 0) {
+                    console.log('Carga automática: No se encontraron copias en GitHub');
+                    showNotification('No hay copias guardadas en GitHub. Comenzando con datos locales.', 'info');
+                    return false;
+                }
+                
+                // Ordenar por fecha de actualización (más reciente primero)
+                relevantGists.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+                const latestGist = relevantGists[0];
+                
+                console.log('Carga automática: Cargando gist más reciente:', latestGist.id);
+                
+                // Cargar el gist más reciente
+                const gistResp = await fetch(`https://api.github.com/gists/${latestGist.id}`, { 
+                    headers: {'Authorization': `token ${window.app.githubToken}`} 
+                });
+                
+                if (!gistResp.ok) {
+                    throw new Error('Error al descargar el gist.');
+                }
+                
+                const fullGist = await gistResp.json();
+                const targetFile = fullGist.files[GIST_FILENAME];
+                if (!targetFile) {
+                    throw new Error(`Archivo ${GIST_FILENAME} no encontrado.`);
+                }
+                
+                const data = JSON.parse(targetFile.content);
+                if (data.config && data.requests) {
+                    // Reemplazar datos locales con los de GitHub
+                    window.app.config = data.config;
+                    window.app.requests = data.requests;
+                    window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name));
+                    
+                    // Guardar localmente para tenerlos disponibles offline
+                    window.app.saveLocal();
+                    
+                    console.log('Carga automática: Datos cargados correctamente desde GitHub');
+                    showNotification('Datos cargados desde GitHub correctamente');
+                    
+                    // Guardar información de última actualización
+                    saveLastUpdate('github');
+                    
+                    return true;
+                } else {
+                    throw new Error('Formato incorrecto en el gist.');
+                }
+            } catch (e) {
+                console.error('Carga automática: Error:', e);
+                showNotification('Error al cargar desde GitHub: ' + e.message, 'error');
+                return false;
+            } finally {
+                // Desbloquear interfaz
+                unblockInterface();
+            }
+        };
 
         async function init() {
             try {
+                // Primero cargar datos locales básicos
                 const lc = localStorage.getItem('schoolConfig');
                 const lr = localStorage.getItem('schoolRequests');
                 if (lc) window.app.config = { ...window.app.config, ...JSON.parse(lc) };
                 if (lr) window.app.requests = JSON.parse(lr);
                 window.app.config.teachers.sort((a,b) => a.name.localeCompare(b.name));
-                if(window.app.githubToken) document.getElementById('input-github-token').value = window.app.githubToken;
+                
+                // Configurar token si existe
+                if(window.app.githubToken) {
+                    document.getElementById('input-github-token').value = window.app.githubToken;
+                    
+                    // Intentar cargar automáticamente desde GitHub
+                    try {
+                        const loaded = await window.app.loadLatestFromGitHubAuto();
+                        if (loaded) {
+                            // Actualizar estado de autenticación
+                            await updateAuthStatusFromToken();
+                        }
+                    } catch (err) {
+                        console.error('Error en carga automática:', err);
+                        showNotification('Error al cargar desde GitHub. Usando datos locales.', 'error');
+                    }
+                }
+                
                 renderAll();
                 
                 // Mostrar indicador de última actualización al iniciar
@@ -1627,11 +1804,35 @@
                 
                 // Iniciar el guardado automático si hay token de GitHub
                 startAutoSave();
-            } catch (err) { console.error(err); } 
-            finally {
+            } catch (err) { 
+                console.error(err); 
+            } finally {
                 const loader = document.getElementById('app-loader');
-                if(loader) { loader.style.opacity = '0'; setTimeout(() => loader.remove(), 500); }
+                if(loader) { 
+                    loader.style.opacity = '0'; 
+                    setTimeout(() => loader.remove(), 500); 
+                }
                 lucide.createIcons();
+            }
+        }
+        
+        // NUEVA FUNCIÓN: Actualizar estado de autenticación desde el token
+        async function updateAuthStatusFromToken() {
+            if (!window.app.githubToken) return;
+            
+            try {
+                const res = await fetch('https://api.github.com/user', { 
+                    headers: { 
+                        'Authorization': `token ${window.app.githubToken}`, 
+                        'Accept': 'application/vnd.github.v3+json' 
+                    }
+                });
+                if (!res.ok) throw new Error("Token inválido");
+                const user = await res.json();
+                updateAuthStatus(true, user.login);
+            } catch (e) {
+                console.error(e);
+                updateAuthStatus(false, "Token inválido");
             }
         }
 
@@ -1686,25 +1887,53 @@
             lucide.createIcons();
         };
 
+        // MODIFICADA: Función para guardar token con carga automática
         window.app.saveGithubToken = async () => {
+            // Si ya estamos cargando, no hacer nada
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Ya se está cargando desde GitHub. Por favor, espera.', 'info');
+                return;
+            }
+            
             const t = document.getElementById('input-github-token').value.trim();
             if(!t) return alert("Introduce un token válido");
+            
             showNotification('Validando token...', 'info');
             try {
-                const res = await fetch('https://api.github.com/user', { headers: { 'Authorization': `token ${t}`, 'Accept': 'application/vnd.github.v3+json' }});
+                const res = await fetch('https://api.github.com/user', { 
+                    headers: { 
+                        'Authorization': `token ${t}`, 
+                        'Accept': 'application/vnd.github.v3+json' 
+                    }
+                });
                 if(!res.ok) throw new Error("Token inválido");
                 const user = await res.json();
-                window.app.githubToken = t; localStorage.setItem('githubToken', t);
-                updateAuthStatus(true, user.login); showNotification(`Token válido. Conectado como ${user.login}`);
+                window.app.githubToken = t; 
+                localStorage.setItem('githubToken', t);
+                updateAuthStatus(true, user.login); 
+                showNotification(`Token válido. Conectado como ${user.login}`);
                 
-                // Iniciar guardado automático después de configurar el token
+                // Iniciar guardado automático
                 startAutoSave();
+                
+                // Cargar automáticamente la última versión
+                try {
+                    const loaded = await window.app.loadLatestFromGitHubAuto();
+                    if (loaded) {
+                        // Si se cargó correctamente, actualizar la interfaz
+                        renderAll();
+                        renderCalendar();
+                        window.app.renderSummaryTable();
+                        showNotification('Datos cargados desde GitHub correctamente');
+                    }
+                } catch (e) {
+                    console.error('Error en carga automática:', e);
+                    showNotification('Error al cargar desde GitHub: ' + e.message, 'error');
+                }
             } catch(e) { 
                 console.error(e); 
                 updateAuthStatus(false, "Token inválido"); 
                 showNotification("Error: El token no funciona", 'error');
-                
-                // Detener guardado automático si el token no es válido
                 stopAutoSave();
             }
         };
@@ -1712,6 +1941,12 @@
         // MODIFICADA: Función para guardar en GitHub con opciones
         window.app.saveGitHub = async () => {
             if(!window.app.githubToken) return alert("Primero configura tu Token.");
+            
+            // Si estamos cargando, no permitir guardar
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga automática', 'info');
+                return;
+            }
             
             try {
                 showNotification('Conectando con GitHub...', 'info');
@@ -1928,6 +2163,13 @@
 
         window.app.loadGitHub = async () => {
             if(!window.app.githubToken) return alert("Configura tu Token primero.");
+            
+            // Si ya estamos cargando, no hacer nada
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Ya se está cargando desde GitHub. Por favor, espera.', 'info');
+                return;
+            }
+            
             try {
                 showNotification('Consultando GitHub...', 'info');
                 const listResp = await fetch('https://api.github.com/gists', { headers: {'Authorization': `token ${window.app.githubToken}`} });
@@ -2081,8 +2323,17 @@
         };
 
         window.app.loadSpecificGist = async (gistId) => {
+            // Si ya estamos cargando, no hacer nada
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Ya se está cargando desde GitHub. Por favor, espera.', 'info');
+                return;
+            }
+            
+            // Bloquear interfaz durante la carga específica
+            blockInterface('Cargando copia específica desde GitHub...');
+            
             window.app.closeModal('modal-github-list');
-            showNotification('Descargando...', 'info');
+            
             try {
                 const gistResp = await fetch(`https://api.github.com/gists/${gistId}`, { headers: {'Authorization': `token ${window.app.githubToken}`} });
                 if(!gistResp.ok) throw new Error('Error al descargar.');
@@ -2107,10 +2358,23 @@
                         }, 500);
                     }
                 } else throw new Error('Formato incorrecto.');
-            } catch (e) { console.error(e); showNotification(e.message, 'error'); }
+            } catch (e) { 
+                console.error(e); 
+                showNotification(e.message, 'error'); 
+            } finally {
+                // Desbloquear interfaz
+                unblockInterface();
+            }
         };
 
+        // MODIFICADA: Función para cambiar pestañas - verificar si está cargando
         window.app.switchTab = (tabName) => {
+            // Si está cargando desde GitHub, no permitir cambiar pestañas
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             ['config', 'calendar', 'stats'].forEach(t => {
                 const btn = document.getElementById(`tab-${t}`);
                 const view = document.getElementById(`view-${t}`);
@@ -2122,6 +2386,11 @@
         };
 
         function showNotification(msg, type = 'success') {
+            // Si está cargando, mostrar notificaciones silenciosas
+            if (window.app.isLoadingFromGitHub && type !== 'error') {
+                return;
+            }
+            
             const area = document.getElementById('notification-area');
             const box = document.getElementById('notification-msg');
             box.textContent = msg;
@@ -2134,6 +2403,9 @@
         window.app.closeModal = (id) => document.getElementById(id).classList.add('hidden');
 
         window.app.showTooltip = (e, htmlContent) => {
+            // Si está cargando, no mostrar tooltips
+            if (window.app.isLoadingFromGitHub) return;
+            
             const tooltip = document.getElementById('custom-tooltip');
             tooltip.innerHTML = htmlContent; tooltip.style.display = 'block';
             tooltip.style.left = (e.clientX + 10) + 'px'; tooltip.style.top = (e.clientY + 10) + 'px';
@@ -2141,6 +2413,12 @@
         window.app.hideTooltip = () => { document.getElementById('custom-tooltip').style.display = 'none'; };
 
         window.app.exportPDF = (type) => {
+            // Si está cargando, no permitir exportar
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             const { jsPDF } = window.jspdf; 
             const doc = new jsPDF();
             const timestamp = getTimestamp();
@@ -2157,6 +2435,12 @@
         };        
         
         window.app.exportJSON = () => {
+            // Si está cargando, no permitir exportar
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             const timestamp = getTimestamp();
             const data = JSON.stringify({ config: window.app.config, requests: window.app.requests }, null, 2);
             const blob = new Blob([data], { type: 'application/json' });
@@ -2169,6 +2453,12 @@
         
         // Nueva función para mostrar permisos por tipo
         window.app.showTeacherPermitsByType = function(teacherId, teacherName, type) {
+            // Si está cargando, no permitir abrir modales
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             // Filtrar solicitudes del profesor por tipo
             const requests = window.app.requests.filter(r => r.teacherId === teacherId && r.type === type);
             
@@ -2231,6 +2521,13 @@
         };
         
         window.app.importJSON = async (e) => {
+            // Si está cargando, no permitir importar
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                e.target.value = '';
+                return;
+            }
+            
             const file = e.target.files[0]; if (!file) return;
             try {
                 const text = await file.text(); const data = JSON.parse(text);
@@ -2255,6 +2552,12 @@
         };
 
         window.app.saveLocal = () => {
+            // Si está cargando, no permitir guardar localmente
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             localStorage.setItem('schoolConfig', JSON.stringify(window.app.config));
             localStorage.setItem('schoolRequests', JSON.stringify(window.app.requests));
             showNotification('Datos guardados en Local');
@@ -2265,6 +2568,12 @@
 
         // FUNCIÓN PARA REINICIAR BASE DE DATOS
         window.app.resetDatabase = function() {
+            // Si está cargando, no permitir reiniciar
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             const confirmation = confirm(
                 "⚠️ ADVERTENCIA CRÍTICA ⚠️\n\n" +
                 "Estás a punto de eliminar TODOS los datos de la aplicación:\n" +
@@ -2308,6 +2617,12 @@
 
         // FUNCIÓN PARA EXPORTAR COPIA ANTES DE REINICIAR
         window.app.exportBackupBeforeReset = function() {
+            // Si está cargando, no permitir exportar
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             const timestamp = getTimestamp();
             const data = JSON.stringify({ 
                 config: window.app.config, 
@@ -2327,6 +2642,13 @@
         };
 
         window.app.handleExcelUpload = async (e) => {
+            // Si está cargando, no permitir importar Excel
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                e.target.value = '';
+                return;
+            }
+            
             const file = e.target.files[0]; if(!file) return;
             try {
                 const data = await file.arrayBuffer();
@@ -2348,6 +2670,9 @@
         };
 
         function renderAll() {
+            // Si está cargando, no renderizar
+            if (window.app.isLoadingFromGitHub) return;
+            
             document.getElementById('input-start-year').value = window.app.config.startYear;
             document.getElementById('text-end-year').innerText = `→ Finaliza en Junio de ${window.app.config.startYear + 1}`;
             const listT = document.getElementById('list-teachers'); listT.innerHTML = '';
@@ -2366,6 +2691,9 @@
         }
 
         function renderHolidayList(type, containerId) {
+            // Si está cargando, no renderizar
+            if (window.app.isLoadingFromGitHub) return;
+            
             const container = document.getElementById(containerId);
             let list = []; let colorClass = '';
             if (type === 'local') { list = window.app.config.localHolidays; colorClass = 'bg-purple-100 text-purple-700'; }
@@ -2382,17 +2710,46 @@
             });
         }
 
-        window.app.updateConfig = (key) => { if(key === 'year') { window.app.config.startYear = parseInt(document.getElementById('input-start-year').value); renderAll(); }};
+        window.app.updateConfig = (key) => { 
+            // Si está cargando, no permitir actualizar configuración
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
+            if(key === 'year') { window.app.config.startYear = parseInt(document.getElementById('input-start-year').value); renderAll(); }
+        };
         
         window.app.addTeacherManual = (e) => { 
+            // Si está cargando, no permitir añadir profesores
+            if (window.app.isLoadingFromGitHub) {
+                e.preventDefault();
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             e.preventDefault(); 
             const n = document.getElementById('input-new-teacher').value.trim(); 
             if(n){ window.app.config.teachers.push({id:crypto.randomUUID(), name:n}); window.app.config.teachers.sort((a,b)=>a.name.localeCompare(b.name)); document.getElementById('input-new-teacher').value=''; renderAll(); }
         };
         
-        window.app.removeTeacher = (id) => { window.app.config.teachers = window.app.config.teachers.filter(t => t.id !== id); renderAll(); };
+        window.app.removeTeacher = (id) => { 
+            // Si está cargando, no permitir eliminar profesores
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
+            window.app.config.teachers = window.app.config.teachers.filter(t => t.id !== id); renderAll(); 
+        };
         
         window.app.openDateModal = (type) => { 
+            // Si está cargando, no permitir abrir modales
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             window.app.tempHolidayType = type; 
             document.getElementById('modal-holiday').classList.remove('hidden'); 
             
@@ -2460,6 +2817,12 @@
         };
         
         window.app.removeHoliday = (type, date) => { 
+            // Si está cargando, no permitir eliminar festivos
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             const target = type==='local'?'localHolidays':(type==='provincial'?'provHolidays':(type==='unavailable'?'unavailableDays':'nonTeachingDays'));
             window.app.config[target] = window.app.config[target].filter(d => d !== date); 
             renderAll(); 
@@ -2467,6 +2830,12 @@
         };
         
         window.app.clearHolidays = (type) => {
+            // Si está cargando, no permitir limpiar festivos
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             const map = { local: 'localHolidays', provincial: 'provHolidays', unavailable: 'unavailableDays', nonTeaching: 'nonTeachingDays' };
             if(confirm(`¿Borrar TODOS los días de esta categoría?`)) { 
                 window.app.config[map[type]] = []; 
@@ -2477,6 +2846,12 @@
         };
 
         window.app.bulkDeleteRequests = () => {
+            // Si está cargando, no permitir eliminar solicitudes
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             const pt = document.getElementById('del-type-paid-teaching').checked;
             const pnt = document.getElementById('del-type-paid-non-teaching').checked;
             const u = document.getElementById('del-type-unpaid').checked;
@@ -2504,6 +2879,12 @@
         };
         
         window.app.confirmAddHoliday = () => {
+            // Si está cargando, no permitir añadir festivos
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             const ds = document.getElementById('input-holiday-date').value; 
             if(!ds) return;
             const type = window.app.tempHolidayType;
@@ -2572,6 +2953,12 @@
 
         // Funciones para manejar conflictos de días en múltiples categorías
         window.app.updateConflictSelection = function(index, categoryName) {
+            // Si está cargando, no permitir actualizar conflictos
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             // Esta función se llama cuando el usuario selecciona una categoría para un conflicto
             // Buscamos los conflictos actuales
             const conflicts = findDateConflicts();
@@ -2591,6 +2978,12 @@
         };
         
         window.app.ignoreAllConflicts = function() {
+            // Si está cargando, no permitir ignorar conflictos
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             if (confirm("¿Ignorar todos los conflictos? Esto puede causar problemas en la visualización del calendario.")) {
                 window.app.closeModal('modal-date-conflicts');
                 showNotification('Conflictos ignorados. Puede revisarlos más tarde.', 'info');
@@ -2598,6 +2991,12 @@
         };
         
         window.app.resolveAllConflicts = function() {
+            // Si está cargando, no permitir resolver conflictos
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             const conflicts = findDateConflicts();
             let resolvedCount = 0;
             
@@ -2643,6 +3042,9 @@
         };
 
         function renderCalendar() {
+            // Si está cargando, no renderizar calendario
+            if (window.app.isLoadingFromGitHub) return;
+            
             const container = document.getElementById('calendar-grid'); container.innerHTML = '';
             const y = window.app.config.startYear;
             const months = [ {y,m:8},{y,m:9},{y,m:10},{y,m:11},{y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5} ];
@@ -2699,6 +3101,12 @@
         }
 
         window.app.openRequestModal = (ds) => {
+            // Si está cargando, no permitir abrir modales de solicitud
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             window.app.selectedDate = ds;
             const isN = (window.app.config.nonTeachingDays||[]).includes(ds);
             document.getElementById('modal-request-title').innerText = `Día: ${new Date(ds).toLocaleDateString()} ${isN?'(NO LECTIVO)':''}`;
@@ -2759,6 +3167,12 @@
         };
 
         window.app.deleteRequest = (id) => { 
+            // Si está cargando, no permitir eliminar solicitudes
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             if(confirm('¿Anular esta solicitud?')) { 
                 window.app.requests=window.app.requests.filter(r=>r.id!==id); 
                 window.app.saveLocal(); 
@@ -2772,6 +3186,12 @@
         };
 
         window.app.submitRequest = () => {
+            // Si está cargando, no permitir enviar solicitudes
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             const tid = document.getElementById('req-teacher-select').value; if(!tid) return alert('Selecciona profesor');
             const type = document.querySelector('input[name="reqType"]:checked')?.value;
             
@@ -2794,6 +3214,12 @@
         };
 
         window.app.submitBulkRequest = () => {
+            // Si está cargando, no permitir enviar solicitudes masivas
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+            
             if(!confirm('¿Añadir a todo el claustro disponible?')) return;
             const ds = window.app.selectedDate; const type = document.querySelector('input[name="reqType"]:checked')?.value;
             
@@ -2814,6 +3240,9 @@
         };
 
         window.app.renderSummaryTable = () => {
+            // Si está cargando, no renderizar tabla de resumen
+            if (window.app.isLoadingFromGitHub) return;
+            
             const tb=document.getElementById('table-summary-body'); tb.innerHTML='';
             const filter = document.getElementById('summary-filter').value;
             const teachersSorted = [...window.app.config.teachers].sort((a,b) => a.name.localeCompare(b.name));
@@ -2860,6 +3289,9 @@
         };
 
         window.app.renderReportTable = () => {
+            // Si está cargando, no renderizar tabla de informe
+            if (window.app.isLoadingFromGitHub) return;
+            
             const s=document.getElementById('report-start').value; const e=document.getElementById('report-end').value;
             const tb=document.getElementById('table-report-body');
             if(!s||!e) return;
