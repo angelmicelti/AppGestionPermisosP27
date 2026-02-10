@@ -1,6 +1,6 @@
 // Nombre de la caché - CAMBIA ESTE NÚMERO CADA VEZ QUE ACTUALICES
-const CACHE_NAME = 'gestor-permisos-v1.9.1';  // <-- Cambia el número de versión
-const APP_VERSION = '1.9.1';
+const CACHE_NAME = 'gestor-permisos-v1.9.2';  // <-- Cambia el número de versión
+const APP_VERSION = '1.9.2';
 
 // Archivos a cachear
 const ARCHIVOS_CACHE = [
