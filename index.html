@@ -250,7 +250,21 @@
         @media print {
             /* @page se gestiona dinámicamente en #print-page-style */
 
-            body * {
+            /* ===== PROTECCIÓN: si el overlay de impresión está en el DOM,
+                   desactivar completamente el sistema legacy ===== */
+            body:has(#a3-print-overlay) * {
+                visibility: hidden !important;
+            }
+            body:has(#a3-print-overlay) #a3-print-overlay,
+            body:has(#a3-print-overlay) #a3-print-overlay * {
+                visibility: visible !important;
+            }
+            body:has(#a3-print-overlay) > *:not(#a3-print-overlay) {
+                display: none !important;
+            }
+
+            /* ===== Estilos legacy (solo si NO hay overlay) ===== */
+            body:not(:has(#a3-print-overlay)) * {
                 visibility: hidden;
             }
 
@@ -4034,10 +4048,38 @@
             // El overlay con clase p- es lo único visible durante la impresión
             window.print();
 
-            // Limpiar tras imprimir
-            window.addEventListener('afterprint', cleanup, { once: true });
-            // Fallback por si afterprint no dispara en algunos navegadores
-            setTimeout(cleanup, 3000);
+            // ===== Estrategia de limpieza robusta para móvil =====
+            // El problema: en móvil, el diálogo de impresión permanece abierto
+            // mucho tiempo mientras el usuario configura formato/orientación.
+            // Si limpiamos demasiado pronto (ej: setTimeout 3s), el overlay
+            // y los estilos se eliminan MIENTRAS el diálogo sigue abierto.
+            // Al cambiar el formato, el navegador re-renderiza SIN el overlay,
+            // y el CSS legacy hace visible #view-calendar con TODOS los meses.
+
+            // 1) afterprint: se dispara al cerrar el diálogo (funciona en PC y muchos móviles)
+            window.addEventListener('afterprint', () => {
+                // Pequeño retraso para asegurar que el diálogo está completamente cerrado
+                setTimeout(cleanup, 500);
+            }, { once: true });
+
+            // 2) focus: cuando la ventana recupera el foco tras cerrar el diálogo de impresión
+            window.addEventListener('focus', function onFocus() {
+                if (!cleanupDone) {
+                    setTimeout(cleanup, 1000);
+                }
+                window.removeEventListener('focus', onFocus);
+            });
+
+            // 3) visibilitychange: cuando el usuario vuelve a la página tras el diálogo
+            document.addEventListener('visibilitychange', function onVisChange() {
+                if (!document.hidden && !cleanupDone) {
+                    setTimeout(cleanup, 1000);
+                }
+                document.removeEventListener('visibilitychange', onVisChange);
+            });
+
+            // 4) Safety net: limpiar tras 2 minutos (último recurso)
+            setTimeout(cleanup, 120000);
         };
 
         // Obtener meses seleccionados del selector
