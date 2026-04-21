@@ -36,6 +36,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
+    <!-- Estilo dinámico para orientación de impresión (se modifica desde JS) -->
+    <style id="print-page-style">
+        @media print { @page { size: A3 landscape; margin: 10mm; } }
+    </style>
+
     <style>
         /* --- ESTILOS VISUALES (Diseño Original adaptado a Bootstrap) --- */
         
@@ -240,6 +245,275 @@
             text-align: center;
             max-width: 80%;
         }
+
+        /* Estilos para impresión del calendario en A3 (orientación dinámica) */
+        @media print {
+            /* @page se gestiona dinámicamente en #print-page-style */
+
+            body * {
+                visibility: hidden;
+            }
+
+            #view-calendar, #view-calendar * {
+                visibility: visible;
+            }
+
+            #view-calendar {
+                position: fixed;
+                inset: 0;
+                display: flex !important;
+                flex-direction: column !important;
+                padding: 5mm;
+                box-sizing: border-box;
+            }
+
+            /* Ocultar botones, selector de meses y leyenda interactiva al imprimir */
+            .no-print, #btn-print-calendar, #calendar-legend-interactive {
+                display: none !important;
+            }
+
+            /* Título del calendario al imprimir */
+            .print-calendar-title {
+                display: block !important;
+                text-align: center;
+                font-size: 16pt;
+                font-weight: bold;
+                margin-bottom: 4mm;
+                color: #000;
+                flex-shrink: 0;
+            }
+
+            /* Subtítulo con meses seleccionados al imprimir */
+            .print-calendar-subtitle {
+                display: block !important;
+                text-align: center;
+                font-size: 10pt;
+                color: #555;
+                margin-bottom: 6mm;
+                flex-shrink: 0;
+            }
+
+            /* ===================================================
+               SISTEMA DE IMPRESIÓN DINÁMICO
+               ===================================================
+               La orientación (portrait/landscape) y el número de
+               columnas se calculan automáticamente en JS.
+               Las clases print-size-* controlan solo los tamaños
+               de fuente y elementos según el ancho de cada mes.
+               =================================================== */
+
+            /* --- Cadena de estiramiento vertical (flex → flex → grid) --- */
+            #calendar-grid.print-layout {
+                display: grid !important;
+                flex: 1 1 0 !important;
+                min-height: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                align-items: stretch !important;
+            }
+            #calendar-grid.print-layout > div {
+                flex: none !important;
+                max-width: none !important;
+                width: auto !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            #calendar-grid.print-layout > div > .card,
+            #calendar-grid.print-layout > div > .card.h-100 {
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            #calendar-grid.print-layout .card > .calendar-grid-7 {
+                flex: 1 !important;
+                display: grid !important;
+                grid-template-columns: repeat(7, 1fr) !important;
+                grid-auto-rows: 1fr !important;
+            }
+
+            /* --- Tamaño XL: mes ancho ≥ 180mm (1 mes portrait, 1-2 landscape) --- */
+            #calendar-grid.print-size-xl .calendar-cell { padding-top: 5pt !important; font-size: 15pt !important; }
+            #calendar-grid.print-size-xl .calendar-cell span { font-size: 15pt !important; }
+            #calendar-grid.print-size-xl .card-header { font-size: 19pt !important; padding: 7pt !important; flex-shrink: 0; }
+            #calendar-grid.print-size-xl .bg-light.py-1.text-center { font-size: 14pt !important; padding: 4pt !important; flex-shrink: 0; }
+            #calendar-grid.print-size-xl .calendar-cell .rounded-circle { width: 9px !important; height: 9px !important; }
+            #calendar-grid.print-size-xl .calendar-cell .fw-bold.text-secondary { font-size: 11pt !important; }
+            #calendar-grid.print-size-xl .calendar-grid-7 { gap: 1.2px !important; }
+
+            /* --- Tamaño LG: mes ancho ≥ 110mm (2-3 meses) --- */
+            #calendar-grid.print-size-lg .calendar-cell { padding-top: 3pt !important; font-size: 10pt !important; }
+            #calendar-grid.print-size-lg .calendar-cell span { font-size: 10pt !important; }
+            #calendar-grid.print-size-lg .card-header { font-size: 13pt !important; padding: 5pt !important; flex-shrink: 0; }
+            #calendar-grid.print-size-lg .bg-light.py-1.text-center { font-size: 9pt !important; padding: 3pt !important; flex-shrink: 0; }
+            #calendar-grid.print-size-lg .calendar-cell .rounded-circle { width: 6px !important; height: 6px !important; }
+            #calendar-grid.print-size-lg .calendar-cell .fw-bold.text-secondary { font-size: 8pt !important; }
+            #calendar-grid.print-size-lg .calendar-grid-7 { gap: 0.7px !important; }
+
+            /* --- Tamaño MD: mes ancho ≥ 65mm (4-6 meses) --- */
+            #calendar-grid.print-size-md .calendar-cell { padding-top: 2pt !important; font-size: 7.5pt !important; }
+            #calendar-grid.print-size-md .calendar-cell span { font-size: 7.5pt !important; }
+            #calendar-grid.print-size-md .card-header { font-size: 10pt !important; padding: 3pt !important; flex-shrink: 0; }
+            #calendar-grid.print-size-md .bg-light.py-1.text-center { font-size: 7pt !important; padding: 1.5pt !important; flex-shrink: 0; }
+            #calendar-grid.print-size-md .calendar-cell .rounded-circle { width: 4.5px !important; height: 4.5px !important; }
+            #calendar-grid.print-size-md .calendar-cell .fw-bold.text-secondary { font-size: 6pt !important; }
+            #calendar-grid.print-size-md .calendar-grid-7 { gap: 0.4px !important; }
+
+            /* --- Tamaño SM: mes ancho < 65mm (7-10 meses) --- */
+            #calendar-grid.print-size-sm .calendar-cell { padding-top: 1pt !important; font-size: 5.5pt !important; }
+            #calendar-grid.print-size-sm .calendar-cell span { font-size: 5.5pt !important; }
+            #calendar-grid.print-size-sm .card-header { font-size: 7pt !important; padding: 2pt 4pt !important; flex-shrink: 0; }
+            #calendar-grid.print-size-sm .bg-light.py-1.text-center { font-size: 5pt !important; padding: 1pt !important; flex-shrink: 0; }
+            #calendar-grid.print-size-sm .calendar-cell .rounded-circle { width: 3px !important; height: 3px !important; }
+            #calendar-grid.print-size-sm .calendar-cell .fw-bold.text-secondary { font-size: 4pt !important; }
+            #calendar-grid.print-size-sm .calendar-grid-7 { gap: 0.2px !important; }
+
+            /* Ajustar las tarjetas del calendario */
+            #calendar-grid .card {
+                box-shadow: none !important;
+                border: 1px solid #999 !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            .calendar-cell {
+                cursor: default !important;
+            }
+
+            /* Mantener colores de fondo en impresión (forzar) */
+            .cell-weekend { background-color: #e0e0e0 !important; opacity: 1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .cell-local { background-color: #e8d5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .cell-prov { background-color: #fde2c8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .cell-unavailable { background-color: #e8e8e8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .cell-non-teaching { background-color: #fdf5c8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .cell-active { box-shadow: inset 0 0 0 1.5pt #3B82F6 !important; }
+
+            /* ===== PUNTITOS: colores explícitos forzados para impresión ===== */
+            .calendar-cell .rounded-circle {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                border: 0.5px solid rgba(0,0,0,0.15);
+            }
+            /* Retribuido Lectivo = azul */
+            .calendar-cell .rounded-circle.bg-primary {
+                background-color: #3B82F6 !important;
+            }
+            /* Retribuido No Lectivo = amarillo/ámbar */
+            .calendar-cell .rounded-circle.bg-warning {
+                background-color: #F59E0B !important;
+            }
+            /* No Retribuido = gris oscuro */
+            .calendar-cell .rounded-circle.bg-dark {
+                background-color: #374151 !important;
+            }
+            /* Otros (secundario) = gris */
+            .calendar-cell .rounded-circle.bg-secondary {
+                background-color: #6B7280 !important;
+            }
+
+            /* Contenedor de puntitos */
+            .calendar-cell .mt-1.d-flex {
+                margin-top: 1px !important;
+            }
+
+            /* Texto "+N" cuando hay más de 3 permisos */
+            .calendar-cell .fw-bold.text-secondary {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Nombres de meses (base, sobreescribir en cada escala) */
+            .card-header {
+                background-color: #2563EB !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Encabezado de días de la semana (base) */
+            .bg-light.py-1.text-center {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Leyenda impresa debajo del título */
+            .print-legend {
+                display: flex !important;
+                flex-wrap: wrap;
+                gap: 4mm;
+                justify-content: center;
+                margin-bottom: 5mm;
+                font-size: 7pt;
+                color: #333;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .print-legend-item {
+                display: flex;
+                align-items: center;
+                gap: 2px;
+            }
+
+            .print-legend-color {
+                width: 8px;
+                height: 8px;
+                border: 0.5px solid #999;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+
+        /* Ocultar en pantalla */
+        .print-calendar-title {
+            display: none;
+        }
+        .print-calendar-subtitle {
+            display: none;
+        }
+        .print-legend {
+            display: none;
+        }
+
+        /* Estilos para el panel de selección de meses */
+        .print-panel {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .print-month-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.3rem 0.65rem;
+            border-radius: 2rem;
+            font-size: 0.78rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1.5px solid #cbd5e1;
+            background: white;
+            color: #64748b;
+            user-select: none;
+        }
+
+        .print-month-chip:hover {
+            border-color: #3B82F6;
+            color: #3B82F6;
+        }
+
+        .print-month-chip.selected {
+            background-color: #2563EB;
+            border-color: #2563EB;
+            color: white;
+        }
+
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -292,6 +566,9 @@
             </button>
             <button onclick="window.app.switchTab('stats')" id="tab-stats" class="tab-btn tab-inactive flex-fill">
                 <div class="d-flex justify-content-center align-items-center gap-2"><i data-lucide="bar-chart-2" style="width:16px"></i> Informes</div>
+            </button>
+            <button onclick="window.app.switchTab('normativa')" id="tab-normativa" class="tab-btn tab-inactive flex-fill">
+                <div class="d-flex justify-content-center align-items-center gap-2"><i data-lucide="scale" style="width:16px"></i> Normativa</div>
             </button>
         </div>
     </nav>
@@ -580,7 +857,32 @@
         </div>
 
         <div id="view-calendar" class="fade-in hidden">
-            <div class="bg-white p-3 rounded shadow-sm mb-4 d-flex flex-wrap gap-3 justify-content-center small text-secondary">
+            <!-- Título de impresión -->
+            <div class="print-calendar-title" id="print-cal-title">Calendario de Asuntos Propios - Curso Escolar</div>
+            <div class="print-calendar-subtitle" id="print-cal-subtitle"></div>
+
+            <!-- Panel de impresión con selector de meses -->
+            <div class="print-panel no-print" id="print-panel">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i data-lucide="printer" style="width:16px; color:#2563EB"></i>
+                        <span class="fw-bold small text-secondary">Imprimir calendario (A3 vertical)</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button onclick="window.app.toggleAllPrintMonths(true)" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:0.72rem">Todos</button>
+                        <button onclick="window.app.toggleAllPrintMonths(false)" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:0.72rem">Ninguno</button>
+                    </div>
+                </div>
+                <div id="print-month-selector" class="d-flex flex-wrap gap-2 mb-2"></div>
+                <div class="d-flex justify-content-end">
+                    <button onclick="window.app.printCalendar()" id="btn-print-calendar" class="btn btn-primary d-flex align-items-center gap-2 btn-sm">
+                        <i data-lucide="printer" style="width:16px"></i> Imprimir seleccionados
+                    </button>
+                </div>
+            </div>
+
+            <!-- Leyenda -->
+            <div class="bg-white p-3 rounded shadow-sm mb-4 d-flex flex-wrap gap-3 justify-content-center small text-secondary" id="calendar-legend-interactive">
                 <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-danger bg-opacity-25 rounded"></div> Finde/Festivo</div>
                 <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-purple-100 rounded"></div> F. Local</div>
                 <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="bg-orange-100 rounded"></div> F. Provincial</div>
@@ -589,6 +891,96 @@
                 <div class="d-flex align-items-center gap-1"><div style="width:16px; height:16px" class="border border-2 border-primary rounded"></div> Solicitud activa</div>
             </div>
             <div id="calendar-grid" class="row g-4"></div>
+        </div>
+
+        <div id="view-normativa" class="fade-in hidden">
+            <div class="card bg-white shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h2 class="h5 text-blue-800 fw-bold d-flex align-items-center gap-2 mb-4">
+                        <i data-lucide="scale"></i> Normativa de Permisos y Licencias
+                    </h2>
+
+                    <div class="row g-4">
+                        <!-- Instrucción 10/2025 -->
+                        <div class="col-12">
+                            <div class="card border-start border-4 border-primary h-100">
+                                <div class="card-body p-3">
+                                    <h5 class="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
+                                        <i data-lucide="file-text" style="width:18px"></i>
+                                        Instrucción 10/2025
+                                    </h5>
+                                    <p class="text-secondary small mb-3">
+                                        Instrucción por la que se modifica el apartado III.27 de la Circular de 11 de Junio de 2021, sobre permisos y licencias del profesorado.
+                                    </p>
+                                    <a href="https://www.juntadeandalucia.es/educacion/portales/documents/270701/3169392/Instrucci%C3%B3n%2010-2025%20por%20la%20que%20se%20modifica%20el%20apartado%20III.27%20de%20la%20Circular%20de%2011%20de%20Junio%20de%202021.pdf/30002055-d7c0-6dbd-abd4-ed967b5b7866?version=1.0"
+                                       target="_blank" rel="noopener noreferrer"
+                                       class="btn btn-primary btn-sm d-flex align-items-center gap-2">
+                                        <i data-lucide="external-link" style="width:16px"></i>
+                                        Abrir documento PDF
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cuadro resumen de permisos y licencias -->
+                        <div class="col-md-6">
+                            <div class="card border-start border-4 border-success h-100">
+                                <div class="card-body p-3">
+                                    <h5 class="fw-bold text-success mb-2 d-flex align-items-center gap-2">
+                                        <i data-lucide="table" style="width:18px"></i>
+                                        Cuadro Resumen de Permisos y Licencias
+                                    </h5>
+                                    <p class="text-secondary small mb-3">
+                                        Anexo II. Documento resumen con los tipos de permisos, licencias y sus condiciones aplicables al personal docente.
+                                    </p>
+                                    <a href="https://www.juntadeandalucia.es/educacion/portales/documents/20123/1001277/ANEXO%20II.%20RESUMEN.pdf/dbc9492e-6690-f388-d58f-bc3414ec5270?version=1.0"
+                                       target="_blank" rel="noopener noreferrer"
+                                       class="btn btn-success btn-sm d-flex align-items-center gap-2">
+                                        <i data-lucide="external-link" style="width:16px"></i>
+                                        Abrir cuadro resumen (PDF)
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Disposiciones en la web -->
+                        <div class="col-md-6">
+                            <div class="card border-start border-4 border-warning h-100">
+                                <div class="card-body p-3">
+                                    <h5 class="fw-bold text-warning mb-2 d-flex align-items-center gap-2">
+                                        <i data-lucide="globe" style="width:18px"></i>
+                                        Disposiciones en la Web
+                                    </h5>
+                                    <p class="text-secondary small mb-3">
+                                        Accede a la página web de la Consejería de Desarrollo Educativo y FP para consultar todas las disposiciones y normativa vigente.
+                                    </p>
+                                    <a href="https://www.juntadeandalucia.es/educacion/portales/profesorado/otra-informacion/permisos-y-licencias"
+                                       target="_blank" rel="noopener noreferrer"
+                                       class="btn btn-warning btn-sm d-flex align-items-center gap-2">
+                                        <i data-lucide="external-link" style="width:16px"></i>
+                                        Consultar disposiciones web
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="bg-blue-50 p-3 rounded border border-primary-subtle">
+                        <h6 class="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
+                            <i data-lucide="info" style="width:16px"></i>
+                            Información sobre la normativa aplicable
+                        </h6>
+                        <p class="small text-secondary mb-2">
+                            La <strong>Instrucción 10/2025</strong> modifica el apartado III.27 de la Circular de 11 de Junio de 2021, regulando los permisos y licencias del profesorado no universitario de la Junta de Andalucía. Esta instrucción establece las condiciones, límites y procedimientos para los diferentes tipos de asuntos propios y permisos que puede solicitar el personal docente.
+                        </p>
+                        <p class="small text-secondary mb-0">
+                            El <strong>cuadro resumen</strong> ofrece una visión general rápida de todos los tipos de permisos disponibles, sus duraciones máximas, requisitos y condiciones de disfrute. Se recomienda consultarlo como referencia rápida antes de tramitar cualquier solicitud.
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="view-stats" class="fade-in hidden">
@@ -2375,14 +2767,15 @@
                 return;
             }
             
-            ['config', 'calendar', 'stats'].forEach(t => {
+            ['config', 'calendar', 'stats', 'normativa'].forEach(t => {
                 const btn = document.getElementById(`tab-${t}`);
                 const view = document.getElementById(`view-${t}`);
                 if (t === tabName) { btn.classList.replace('tab-inactive', 'tab-active'); view.classList.remove('hidden'); } 
                 else { btn.classList.replace('tab-active', 'tab-inactive'); view.classList.add('hidden'); }
             });
-            if (tabName === 'calendar') renderCalendar();
+            if (tabName === 'calendar') { buildPrintMonthSelector(); renderCalendar(); }
             if (tabName === 'stats') { window.app.renderSummaryTable(); window.app.renderReportTable(); }
+            if (tabName === 'normativa') { lucide.createIcons(); }
         };
 
         function showNotification(msg, type = 'success') {
@@ -3041,13 +3434,208 @@
             }
         };
 
-        function renderCalendar() {
+        // ================================================================
+        // ALGORITMO DE LAYOUT AUTOMÁTICO PARA IMPRESIÓN A3
+        // ================================================================
+        // Calcula la mejor orientación (portrait/landscape) y distribución
+        // (columnas × filas) para que todos los meses quepan en una sola
+        // página A3, aprovechando al máximo el espacio disponible.
+        // ================================================================
+        function findBestPrintLayout(n) {
+            // Dimensiones A3 (mm)
+            const A3_W = 297, A3_H = 420;
+            const MARGIN = 10;   // margen de página por lado
+            const GAP = 4;       // separación entre meses (mm)
+            const HEADER_H = 20; // espacio reservado para título + subtítulo (mm)
+
+            const orientations = [
+                { name: 'portrait',  pw: A3_W, ph: A3_H },   // 297 × 420
+                { name: 'landscape', pw: A3_H, ph: A3_W }    // 420 × 297
+            ];
+
+            const ASPECT_IDEAL = 7 / 8; // proporción ideal ancho/alto de un mes (~0.875)
+
+            let best = null;
+
+            for (const orient of orientations) {
+                const usable_w = orient.pw - 2 * MARGIN;
+                const usable_h = orient.ph - 2 * MARGIN;
+
+                for (let cols = 1; cols <= n; cols++) {
+                    const rows = Math.ceil(n / cols);
+                    const month_w = (usable_w - (cols - 1) * GAP) / cols;
+                    const month_h = (usable_h - HEADER_H - (rows - 1) * GAP) / rows;
+
+                    if (month_w <= 0 || month_h <= 0) continue;
+
+                    // Un mes necesita mínimo ~7 columnas de ~8mm y ~8 filas de ~5mm
+                    if (month_w < 56) continue;  // 7 cols × 8mm mínimo
+                    if (month_h < 40) continue;  // 8 filas × 5mm mínimo
+
+                    // Puntuación: área × (1 - penalización por desviación de aspecto)
+                    const aspect = month_w / month_h;
+                    const aspect_dev = Math.abs(aspect - ASPECT_IDEAL) / ASPECT_IDEAL;
+                    const area = month_w * month_h;
+                    const score = area * (1 - aspect_dev * 0.5);
+
+                    if (!best || score > best.score) {
+                        best = { orientation: orient.name, cols, rows, month_w, month_h, score };
+                    }
+                }
+            }
+
+            return best;
+        }
+
+        // Nivel de tamaño según el ancho de cada mes (mm)
+        function getSizeLevel(month_w) {
+            if (month_w >= 180) return 'xl';
+            if (month_w >= 110) return 'lg';
+            if (month_w >= 65)  return 'md';
+            return 'sm';
+        }
+
+        // Función para imprimir el calendario en A3 con layout automático
+        window.app.printCalendar = () => {
+            // Si está cargando, no permitir imprimir
+            if (window.app.isLoadingFromGitHub) {
+                showNotification('Espera a que termine la carga desde GitHub', 'info');
+                return;
+            }
+
+            // Obtener meses seleccionados
+            const selectedMonths = getSelectedPrintMonths();
+            if (selectedMonths.length === 0) {
+                showNotification('Selecciona al menos un mes para imprimir', 'error');
+                return;
+            }
+
+            const y = window.app.config.startYear;
+            const mNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const allMonths = [ {y,m:8},{y,m:9},{y,m:10},{y,m:11},{y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5} ];
+
+            // Actualizar título
+            const titleEl = document.getElementById('print-cal-title');
+            if (titleEl) {
+                titleEl.textContent = `Calendario de Asuntos Propios - Curso ${y}/${y + 1}`;
+            }
+
+            // Actualizar subtítulo con los meses seleccionados
+            const subtitleEl = document.getElementById('print-cal-subtitle');
+            if (subtitleEl) {
+                if (selectedMonths.length === allMonths.length) {
+                    subtitleEl.textContent = 'Curso completo (Septiembre - Junio)';
+                } else {
+                    const names = selectedMonths.map(idx => mNames[allMonths[idx].m]);
+                    subtitleEl.textContent = names.join(' | ');
+                }
+            }
+
+            // Renderizar solo los meses seleccionados
+            renderCalendar(selectedMonths);
+
+            // Calcular mejor layout automático
+            const n = selectedMonths.length;
+            const layout = findBestPrintLayout(n);
+            const sizeLevel = getSizeLevel(layout.month_w);
+
+            // Aplicar orientación dinámica en @page
+            document.getElementById('print-page-style').textContent =
+                `@media print { @page { size: A3 ${layout.orientation}; margin: 10mm; } }`;
+
+            // Aplicar clases de layout y tamaño al grid
+            const grid = document.getElementById('calendar-grid');
+            grid.classList.remove('print-layout', 'print-size-xl', 'print-size-lg', 'print-size-md', 'print-size-sm');
+            grid.classList.add('print-layout', `print-size-${sizeLevel}`);
+            grid.style.gridTemplateColumns = `repeat(${layout.cols}, 1fr)`;
+            grid.style.gap = '4mm';
+
+            // Nombre del archivo PDF con meses abreviados
+            const shortNames = ['Se', 'Oc', 'No', 'Di', 'En', 'Fe', 'Mr', 'Ab', 'My', 'Ju'];
+            const abbrMonths = selectedMonths.map(idx => shortNames[idx]).join('');
+            const shortYear = String(y).slice(-2);
+            const originalTitle = document.title;
+            document.title = `PermisosP${shortYear}_${abbrMonths}_${y + 1}.pdf`;
+
+            // Abrir diálogo de impresión y restaurar al terminar
+            const restoreCalendar = () => {
+                grid.classList.remove('print-layout', 'print-size-xl', 'print-size-lg', 'print-size-md', 'print-size-sm');
+                grid.style.gridTemplateColumns = '';
+                grid.style.gap = '';
+                document.getElementById('print-page-style').textContent =
+                    '@media print { @page { size: A3 landscape; margin: 10mm; } }';
+                document.title = originalTitle;
+                renderCalendar();
+                window.removeEventListener('afterprint', restoreCalendar);
+            };
+            window.addEventListener('afterprint', restoreCalendar);
+
+            window.print();
+        };
+
+        // Obtener meses seleccionados del selector
+        function getSelectedPrintMonths() {
+            const chips = document.querySelectorAll('#print-month-selector .print-month-chip');
+            const selected = [];
+            chips.forEach((chip, idx) => {
+                if (chip.classList.contains('selected')) selected.push(idx);
+            });
+            return selected;
+        }
+
+        // Toggle todos los meses
+        window.app.toggleAllPrintMonths = (selectAll) => {
+            const chips = document.querySelectorAll('#print-month-selector .print-month-chip');
+            chips.forEach(chip => {
+                if (selectAll) chip.classList.add('selected');
+                else chip.classList.remove('selected');
+            });
+            updatePrintButtonLabel();
+        };
+
+        // Actualizar etiqueta del botón de imprimir
+        function updatePrintButtonLabel() {
+            const selected = getSelectedPrintMonths().length;
+            const btn = document.getElementById('btn-print-calendar');
+            if (btn) {
+                btn.innerHTML = `<i data-lucide="printer" style="width:16px"></i> Imprimir (${selected} mes${selected !== 1 ? 'es' : ''})`;
+                lucide.createIcons();
+            }
+        }
+
+        // Construir el selector de meses (se llama al cambiar a la pestaña calendario)
+        function buildPrintMonthSelector() {
+            const container = document.getElementById('print-month-selector');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const y = window.app.config.startYear;
+            const mNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const allMonths = [ {y,m:8},{y,m:9},{y,m:10},{y,m:11},{y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5} ];
+
+            allMonths.forEach((item, idx) => {
+                const chip = document.createElement('div');
+                chip.className = 'print-month-chip selected'; // todos seleccionados por defecto
+                chip.dataset.index = idx;
+                chip.textContent = `${mNames[item.m]} ${item.y}`;
+                chip.addEventListener('click', () => {
+                    chip.classList.toggle('selected');
+                    updatePrintButtonLabel();
+                });
+                container.appendChild(chip);
+            });
+
+            updatePrintButtonLabel();
+        }
+
+        function renderCalendar(monthIndices) {
             // Si está cargando, no renderizar calendario
             if (window.app.isLoadingFromGitHub) return;
             
             const container = document.getElementById('calendar-grid'); container.innerHTML = '';
             const y = window.app.config.startYear;
-            const months = [ {y,m:8},{y,m:9},{y,m:10},{y,m:11},{y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5} ];
+            const allMonths = [ {y,m:8},{y,m:9},{y,m:10},{y,m:11},{y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5} ];
+            const months = monthIndices ? monthIndices.map(i => allMonths[i]) : allMonths;
             const mNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
             months.forEach(item => {
