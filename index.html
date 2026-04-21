@@ -267,15 +267,6 @@
                 box-sizing: border-box;
             }
 
-            /* Orientación landscape: rotar contenido si el navegador ignora @page size */
-            #view-calendar.print-landscape {
-                transform: rotate(90deg) translateY(-100%);
-                transform-origin: top left;
-                width: 100vh;
-                height: 100vw;
-                overflow: hidden;
-            }
-
             /* Ocultar botones, selector de meses y leyenda interactiva al imprimir */
             .no-print, #btn-print-calendar, #calendar-legend-interactive {
                 display: none !important;
@@ -3596,47 +3587,56 @@
         // (columnas × filas) para que todos los meses quepan en una sola
         // página A3, aprovechando al máximo el espacio disponible.
         // ================================================================
+        // Algoritmo de layout para impresión A3
+        // Criterio principal: pocos meses → vertical (portrait), muchos → apaisado (landscape)
         function findBestPrintLayout(n) {
             // Dimensiones A3 (mm)
-            const A3_W = 297, A3_H = 420;
-            const MARGIN = 10;   // margen de página por lado
-            const GAP = 4;       // separación entre meses (mm)
-            const HEADER_H = 20; // espacio reservado para título + subtítulo (mm)
+            const A3_W = 297, A3_H = 420;  // portrait: 297×420, landscape: 420×297
+            const MARGIN = 10;
+            const GAP = 4;
+            const HEADER_H = 20; // título + subtítulo
 
-            const orientations = [
-                { name: 'portrait',  pw: A3_W, ph: A3_H },   // 297 × 420
-                { name: 'landscape', pw: A3_H, ph: A3_W }    // 420 × 297
-            ];
+            // Decidir orientación según número de meses:
+            // 1-3 meses  → portrait  (aprovechar la altura)
+            // 4-5 meses  → landscape (necesitan más ancho)
+            // 6-10 meses → landscape (siempre)
+            const forcedOrientation = (n <= 3) ? 'portrait' : 'landscape';
 
-            const ASPECT_IDEAL = 7 / 8; // proporción ideal ancho/alto de un mes (~0.875)
+            const pw = (forcedOrientation === 'portrait') ? A3_W : A3_H;
+            const ph = (forcedOrientation === 'portrait') ? A3_H : A3_W;
+            const usable_w = pw - 2 * MARGIN;
+            const usable_h = ph - 2 * MARGIN;
 
+            // Probar distintas configuraciones de columnas y quedarse con la mejor
             let best = null;
+            const ASPECT_IDEAL = 0.875; // proporción ideal ancho/alto de un mes
 
-            for (const orient of orientations) {
-                const usable_w = orient.pw - 2 * MARGIN;
-                const usable_h = orient.ph - 2 * MARGIN;
+            for (let cols = 1; cols <= n; cols++) {
+                const rows = Math.ceil(n / cols);
+                const month_w = (usable_w - (cols - 1) * GAP) / cols;
+                const month_h = (usable_h - HEADER_H - (rows - 1) * GAP) / rows;
 
-                for (let cols = 1; cols <= n; cols++) {
-                    const rows = Math.ceil(n / cols);
-                    const month_w = (usable_w - (cols - 1) * GAP) / cols;
-                    const month_h = (usable_h - HEADER_H - (rows - 1) * GAP) / rows;
+                if (month_w <= 0 || month_h <= 0) continue;
+                if (month_w < 56) continue;  // mínimo 7 cols × 8mm
+                if (month_h < 40) continue;  // mínimo 8 filas × 5mm
 
-                    if (month_w <= 0 || month_h <= 0) continue;
+                const aspect = month_w / month_h;
+                const aspect_dev = Math.abs(aspect - ASPECT_IDEAL) / ASPECT_IDEAL;
+                const area = month_w * month_h;
+                const score = area * (1 - aspect_dev * 0.5);
 
-                    // Un mes necesita mínimo ~7 columnas de ~8mm y ~8 filas de ~5mm
-                    if (month_w < 56) continue;  // 7 cols × 8mm mínimo
-                    if (month_h < 40) continue;  // 8 filas × 5mm mínimo
-
-                    // Puntuación: área × (1 - penalización por desviación de aspecto)
-                    const aspect = month_w / month_h;
-                    const aspect_dev = Math.abs(aspect - ASPECT_IDEAL) / ASPECT_IDEAL;
-                    const area = month_w * month_h;
-                    const score = area * (1 - aspect_dev * 0.5);
-
-                    if (!best || score > best.score) {
-                        best = { orientation: orient.name, cols, rows, month_w, month_h, score };
-                    }
+                if (!best || score > best.score) {
+                    best = { orientation: forcedOrientation, cols, rows, month_w, month_h, score };
                 }
+            }
+
+            // Fallback si ninguna configuración es válida
+            if (!best) {
+                const cols = Math.min(n, 3);
+                const rows = Math.ceil(n / cols);
+                const month_w = (usable_w - (cols - 1) * GAP) / cols;
+                const month_h = (usable_h - HEADER_H - (rows - 1) * GAP) / rows;
+                best = { orientation: forcedOrientation, cols, rows, month_w, month_h, score: 0 };
             }
 
             return best;
@@ -3651,6 +3651,9 @@
         }
 
         // Función para imprimir el calendario en A3 con layout automático
+        // Estrategia: abrir ventana nueva con solo los meses seleccionados.
+        // Esto funciona en TODOS los dispositivos (móvil, tablet, escritorio)
+        // porque el contenido ya está correcto antes de llamar a print().
         window.app.printCalendar = () => {
             // Si está cargando, no permitir imprimir
             if (window.app.isLoadingFromGitHub) {
@@ -3669,115 +3672,254 @@
             const mNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
             const allMonths = [ {y,m:8},{y,m:9},{y,m:10},{y,m:11},{y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5} ];
 
-            // Actualizar título
-            const titleEl = document.getElementById('print-cal-title');
-            if (titleEl) {
-                titleEl.textContent = `Calendario de Asuntos Propios - Curso ${y}/${y + 1}`;
-            }
-
-            // Actualizar subtítulo con los meses seleccionados
-            const subtitleEl = document.getElementById('print-cal-subtitle');
-            if (subtitleEl) {
-                if (selectedMonths.length === allMonths.length) {
-                    subtitleEl.textContent = 'Curso completo (Septiembre - Junio)';
-                } else {
-                    const names = selectedMonths.map(idx => mNames[allMonths[idx].m]);
-                    subtitleEl.textContent = names.join(' | ');
-                }
-            }
-
-            // Nombre del archivo PDF con meses abreviados (cambiar ANTES de manipular el DOM)
-            const shortNames = ['Se', 'Oc', 'No', 'Di', 'En', 'Fe', 'Mr', 'Ab', 'My', 'Ju'];
-            const abbrMonths = selectedMonths.map(idx => shortNames[idx]).join('');
-            const shortYear = String(y).slice(-2);
-            const originalTitle = document.title;
-            const pdfTitle = `PermisosP${shortYear}_${abbrMonths}_${y + 1}.pdf`;
-            document.title = pdfTitle;
-
-            // ============================================
-            // ELIMINAR FÍSICAMENTE del DOM los meses no seleccionados
-            // (la única forma 100% fiable en móvil/tablet)
-            // ============================================
-            const grid = document.getElementById('calendar-grid');
-            const allMonthDivs = Array.from(grid.querySelectorAll(':scope > div[data-month-idx]'));
-            const storageDiv = document.createElement('div'); // contenedor temporal oculto
-
-            allMonthDivs.forEach(div => {
-                const idx = parseInt(div.dataset.monthIdx, 10);
-                if (!selectedMonths.includes(idx)) {
-                    // Mover a almacenamiento temporal (se elimina del grid)
-                    storageDiv.appendChild(div);
-                }
-            });
-
-            // Reordenar los meses seleccionados que quedan en el grid
-            const visibleDivs = Array.from(grid.querySelectorAll(':scope > div[data-month-idx]'));
-            visibleDivs.sort((a, b) => parseInt(a.dataset.monthIdx) - parseInt(b.dataset.monthIdx));
-            visibleDivs.forEach(div => grid.appendChild(div));
-
-            // Calcular mejor layout automático
+            // Calcular layout
             const n = selectedMonths.length;
             const layout = findBestPrintLayout(n);
             const sizeLevel = getSizeLevel(layout.month_w);
 
-            // Aplicar orientación dinámica en @page
-            document.getElementById('print-page-style').textContent =
-                `@media print { @page { size: A3 ${layout.orientation}; margin: 10mm; } }`;
+            // Nombre del archivo PDF
+            const shortNames = ['Se', 'Oc', 'No', 'Di', 'En', 'Fe', 'Mr', 'Ab', 'My', 'Ju'];
+            const abbrMonths = selectedMonths.map(idx => shortNames[idx]).join('');
+            const shortYear = String(y).slice(-2);
+            const pdfTitle = `PermisosP${shortYear}_${abbrMonths}_${y + 1}.pdf`;
 
-            // Aplicar clase de orientación al contenedor (rotación CSS para móviles que ignoran @page)
-            const viewCalendar = document.getElementById('view-calendar');
-            viewCalendar.classList.remove('print-landscape');
-            if (layout.orientation === 'landscape') {
-                viewCalendar.classList.add('print-landscape');
-            }
+            // Título y subtítulo
+            const titleText = `Calendario de Asuntos Propios - Curso ${y}/${y + 1}`;
+            const subtitleText = (selectedMonths.length === allMonths.length)
+                ? 'Curso completo (Septiembre - Junio)'
+                : selectedMonths.map(idx => mNames[allMonths[idx].m]).join(' | ');
 
-            // Aplicar clases de layout y tamaño al grid
-            grid.classList.remove('print-layout', 'print-size-xl', 'print-size-lg', 'print-size-md', 'print-size-sm');
-            grid.classList.add('print-layout', `print-size-${sizeLevel}`);
-            grid.style.gridTemplateColumns = `repeat(${layout.cols}, 1fr)`;
-            grid.style.gap = '4mm';
+            // Recoger los estilos de la página actual (para que la impresión se vea igual)
+            const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
 
-            // Guardar referencia para limpieza
-            let restored = false;
-            const restoreCalendar = () => {
-                if (restored) return;
-                restored = true;
-
-                // Restaurar clases y estilos del grid
-                grid.classList.remove('print-layout', 'print-size-xl', 'print-size-lg', 'print-size-md', 'print-size-sm');
-                grid.style.gridTemplateColumns = '';
-                grid.style.gap = '';
-
-                // Devolver todos los meses al grid y reordenarlos
-                while (storageDiv.firstChild) {
-                    grid.appendChild(storageDiv.firstChild);
+            // Construir HTML de los meses seleccionados
+            let monthsHtml = '';
+            selectedMonths.sort((a, b) => a - b).forEach(idx => {
+                const item = allMonths[idx];
+                const col = document.createElement('div');
+                col.dataset.monthIdx = idx;
+                const card = document.createElement('div');
+                card.className = "card h-100 shadow-sm border-0";
+                let html = `<div class="card-header text-center fw-bold bg-light text-secondary border-bottom-0">${mNames[item.m]} ${item.y}</div>`;
+                html += `<div class="bg-light py-1 text-center small text-secondary border-top" style="display:grid; grid-template-columns: repeat(7, 1fr)"><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>`;
+                html += `<div class="calendar-grid-7 border-top">`;
+                const dim = new Date(item.y, item.m+1, 0).getDate();
+                const off = (new Date(item.y, item.m, 1).getDay() + 6) % 7;
+                for(let i=0; i<off; i++) html += `<div class="bg-light"></div>`;
+                for(let d=1; d<=dim; d++) {
+                    const dateStr = `${item.y}-${String(item.m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const day = new Date(item.y, item.m, d).getDay();
+                    const isW = day===0||day===6;
+                    const isL = window.app.config.localHolidays.includes(dateStr);
+                    const isP = window.app.config.provHolidays.includes(dateStr);
+                    const isU = (window.app.config.unavailableDays||[]).includes(dateStr);
+                    const isN = (window.app.config.nonTeachingDays||[]).includes(dateStr);
+                    const reqs = window.app.requests.filter(r => r.date === dateStr);
+                    let cls = "calendar-cell"; let num = "small fw-medium";
+                    if(isW) { cls += " cell-weekend"; num="text-danger opacity-50"; }
+                    else if(isL) { cls += " cell-local"; num="text-purple-700 fw-bold"; }
+                    else if(isP) { cls += " cell-prov"; num="text-orange-700 fw-bold"; }
+                    else if(isU) { cls += " cell-unavailable"; num="text-gray-700 fw-bold"; }
+                    else if(isN) { cls += " cell-non-teaching"; num="text-yellow-700 fw-bold"; }
+                    if(reqs.length>0) cls += " cell-active";
+                    let dots = '';
+                    if(reqs.length > 0) {
+                        dots = '<div class="mt-1 d-flex gap-1 flex-wrap justify-content-center w-100 px-1">';
+                        const max = 3; const count = reqs.length; const display = count > max ? max-1 : count;
+                        for(let i=0; i<display; i++) {
+                            const t = reqs[i].type; let c = 'bg-secondary';
+                            if(t === 'paid_teaching') c = 'bg-primary'; if(t === 'paid_non_teaching') c = 'bg-warning'; if(t === 'unpaid') c = 'bg-dark';
+                            dots += `<div class="rounded-circle ${c}" style="width:6px; height:6px"></div>`;
+                        }
+                        if(count > max) dots += `<div style="font-size:9px; line-height:6px" class="fw-bold text-secondary">+${count-(max-1)}</div>`;
+                        dots += '</div>';
+                    }
+                    html += `<div class="${cls}"><span class="${num}">${d}</span>${dots}</div>`;
                 }
-                const allDivs = Array.from(grid.querySelectorAll(':scope > div[data-month-idx]'));
-                allDivs.sort((a, b) => parseInt(a.dataset.monthIdx) - parseInt(b.dataset.monthIdx));
-                allDivs.forEach(div => grid.appendChild(div));
+                html += `</div>`;
+                card.innerHTML = html;
+                col.appendChild(card);
+                monthsHtml += col.outerHTML;
+            });
 
-                // Restaurar orientación y título
-                viewCalendar.classList.remove('print-landscape');
-                document.getElementById('print-page-style').textContent =
-                    '@media print { @page { size: A3 landscape; margin: 10mm; } }';
-                document.title = originalTitle;
-                window.removeEventListener('afterprint', restoreCalendar);
+            // Leyenda para impresión
+            const legendHtml = `
+                <div class="print-legend">
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#e0e0e0"></div> Finde</div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#e8d5f5"></div> F. Local</div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#fde2c8"></div> F. Provincial</div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#e8e8e8"></div> No Disponible</div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#fdf5c8"></div> No Lectivo</div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#3B82F6"></div> Retr. Lectivo</div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#F59E0B"></div> Retr. NO Lectivo</div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#374151"></div> No Retribuido</div>
+                </div>`;
+
+            // Recoger estilos inline y links CSS
+            let stylesHtml = '';
+            styles.forEach(s => { stylesHtml += s.outerHTML; });
+
+            // Construir documento completo para la ventana nueva
+            const pageOrientation = layout.orientation;
+            const printDoc = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>${pdfTitle}</title>
+    ${stylesHtml}
+    <style>
+        @page { size: A3 ${pageOrientation}; margin: 10mm; }
+        body { margin: 0; padding: 0; background: white !important; }
+        body * { visibility: visible !important; }
+
+        .print-calendar-title {
+            display: block; text-align: center; font-size: 16pt; font-weight: bold;
+            margin-bottom: 4mm; color: #000;
+        }
+        .print-calendar-subtitle {
+            display: block; text-align: center; font-size: 10pt; color: #555;
+            margin-bottom: 6mm;
+        }
+        .print-legend {
+            display: flex; flex-wrap: wrap; gap: 4mm; justify-content: center;
+            margin-bottom: 5mm; font-size: 7pt; color: #333;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        }
+        .print-legend-item { display: flex; align-items: center; gap: 2px; }
+        .print-legend-color { width: 8px; height: 8px; border: 0.5px solid #999; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+        #print-grid {
+            display: grid;
+            grid-template-columns: repeat(${layout.cols}, 1fr);
+            gap: 4mm;
+            flex: 1 1 0;
+            align-items: stretch;
+        }
+        #print-grid > div { break-inside: avoid; page-break-inside: avoid; display: flex; flex-direction: column; }
+        #print-grid > div > .card { flex: 1; display: flex; flex-direction: column; }
+        #print-grid .card > .calendar-grid-7 { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 1fr; }
+        #print-grid .card { box-shadow: none !important; border: 1px solid #999 !important; }
+        .calendar-cell { cursor: default !important; }
+
+        /* Colores fondo */
+        .cell-weekend { background-color: #e0e0e0 !important; opacity: 1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .cell-local { background-color: #e8d5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .cell-prov { background-color: #fde2c8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .cell-unavailable { background-color: #e8e8e8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .cell-non-teaching { background-color: #fdf5c8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .cell-active { box-shadow: inset 0 0 0 1.5pt #3B82F6 !important; }
+
+        /* Puntitos */
+        .calendar-cell .rounded-circle { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; border: 0.5px solid rgba(0,0,0,0.15); }
+        .calendar-cell .rounded-circle.bg-primary { background-color: #3B82F6 !important; }
+        .calendar-cell .rounded-circle.bg-warning { background-color: #F59E0B !important; }
+        .calendar-cell .rounded-circle.bg-dark { background-color: #374151 !important; }
+        .calendar-cell .rounded-circle.bg-secondary { background-color: #6B7280 !important; }
+
+        /* Cabecera de mes */
+        .card-header { background-color: #2563EB !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+        /* Tamaño de fuentes según escala */
+        ${sizeLevel === 'xl' ? `
+        .calendar-cell { padding-top: 5pt !important; font-size: 15pt !important; }
+        .calendar-cell span { font-size: 15pt !important; }
+        .card-header { font-size: 19pt !important; padding: 7pt !important; }
+        .bg-light.py-1.text-center { font-size: 14pt !important; padding: 4pt !important; }
+        .calendar-cell .rounded-circle { width: 9px !important; height: 9px !important; }
+        .calendar-cell .fw-bold.text-secondary { font-size: 11pt !important; }
+        .calendar-grid-7 { gap: 1.2px !important; }
+        ` : ''}
+        ${sizeLevel === 'lg' ? `
+        .calendar-cell { padding-top: 3pt !important; font-size: 10pt !important; }
+        .calendar-cell span { font-size: 10pt !important; }
+        .card-header { font-size: 13pt !important; padding: 5pt !important; }
+        .bg-light.py-1.text-center { font-size: 9pt !important; padding: 3pt !important; }
+        .calendar-cell .rounded-circle { width: 6px !important; height: 6px !important; }
+        .calendar-cell .fw-bold.text-secondary { font-size: 8pt !important; }
+        .calendar-grid-7 { gap: 0.7px !important; }
+        ` : ''}
+        ${sizeLevel === 'md' ? `
+        .calendar-cell { padding-top: 2pt !important; font-size: 7.5pt !important; }
+        .calendar-cell span { font-size: 7.5pt !important; }
+        .card-header { font-size: 10pt !important; padding: 3pt !important; }
+        .bg-light.py-1.text-center { font-size: 7pt !important; padding: 1.5pt !important; }
+        .calendar-cell .rounded-circle { width: 4.5px !important; height: 4.5px !important; }
+        .calendar-cell .fw-bold.text-secondary { font-size: 6pt !important; }
+        .calendar-grid-7 { gap: 0.4px !important; }
+        ` : ''}
+        ${sizeLevel === 'sm' ? `
+        .calendar-cell { padding-top: 1pt !important; font-size: 5.5pt !important; }
+        .calendar-cell span { font-size: 5.5pt !important; }
+        .card-header { font-size: 7pt !important; padding: 2pt 4pt !important; }
+        .bg-light.py-1.text-center { font-size: 5pt !important; padding: 1pt !important; }
+        .calendar-cell .rounded-circle { width: 3px !important; height: 3px !important; }
+        .calendar-cell .fw-bold.text-secondary { font-size: 4pt !important; }
+        .calendar-grid-7 { gap: 0.2px !important; }
+        ` : ''}
+
+        /* Ocultar elementos no deseados */
+        .no-print, #btn-print-calendar, #calendar-legend-interactive,
+        .accordion, nav, header, #last-update-indicator, #custom-tooltip,
+        #notification-area, #app-loader, #interface-blocker { display: none !important; }
+
+        /* Layout flex vertical para rellenar la página */
+        html, body { height: 100%; }
+        body { display: flex; flex-direction: column; }
+        #print-grid { flex: 1 1 0; min-height: 0; }
+    <\/style>
+</head>
+<body>
+    <div class="print-calendar-title">${titleText}</div>
+    <div class="print-calendar-subtitle">${subtitleText}</div>
+    ${legendHtml}
+    <div id="print-grid">
+        ${monthsHtml}
+    </div>
+    <\/body>
+</html>`;
+
+            // Usar iframe invisible para imprimir (sin ventana abierta)
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; overflow:hidden;';
+            document.body.appendChild(iframe);
+
+            const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iDoc.open();
+            iDoc.write(printDoc);
+            iDoc.close();
+
+            // Esperar a que cargue el contenido y luego imprimir
+            const tryPrint = () => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (e) {
+                    // Fallback: si iframe falla (algunos móviles), abrir ventana
+                    document.body.removeChild(iframe);
+                    const printWin = window.open('', '_blank');
+                    if (printWin) {
+                        printWin.document.open();
+                        printWin.document.write(printDoc);
+                        printWin.document.close();
+                    } else {
+                        showNotification('Permite ventanas emergentes para imprimir', 'error');
+                    }
+                    return;
+                }
+                // Eliminar iframe tras imprimir (1.5s de margen)
+                setTimeout(() => {
+                    if (iframe.parentNode) document.body.removeChild(iframe);
+                }, 1500);
             };
-            window.addEventListener('afterprint', restoreCalendar);
 
-            // Fallback: si afterprint no se dispara (algunos navegadores móviles),
-            // restaurar tras un tiempo prudencial
-            setTimeout(() => {
-                if (!restored) restoreCalendar();
-            }, 5000);
-
-            // Forzar reflow antes de imprimir (garantiza que el DOM actualizado se imprima)
-            void grid.offsetHeight;
-
-            // Retardo para asegurar que el navegador procesa los cambios antes de imprimir
-            setTimeout(() => {
-                window.print();
-            }, 200);
+            // Esperar que el iframe cargue (imágenes, fuentes, etc.)
+            if (iframe.contentWindow.document.readyState === 'complete') {
+                setTimeout(tryPrint, 300);
+            } else {
+                iframe.contentWindow.onload = () => setTimeout(tryPrint, 300);
+                // Fallback por si onload no dispara
+                setTimeout(tryPrint, 1000);
+            }
         };
 
         // Obtener meses seleccionados del selector
