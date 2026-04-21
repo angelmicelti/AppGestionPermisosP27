@@ -514,6 +514,141 @@
             color: white;
         }
 
+        /* ============================================================
+           ESTILOS RESPONSIVOS: Tablets y Móviles
+           ============================================================ */
+
+        /* --- Tablets (≤ 991px) --- */
+        @media (max-width: 991px) {
+            .container-custom { padding: 0 0.75rem; }
+        }
+
+        /* --- Móviles grandes / landscape (≤ 768px) --- */
+        @media (max-width: 768px) {
+            /* Header compacto */
+            header h1 { font-size: 0.95rem !important; }
+            header h1 i, .tab-btn i { width: 14px !important; height: 14px !important; }
+            #auth-status { font-size: 0.65rem; padding: 0.2rem 0.5rem !important; }
+
+            /* Tabs: texto más pequeño */
+            .tab-btn { padding: 0.6rem 0.25rem !important; font-size: 0.72rem; gap: 0.2rem !important; }
+            .tab-btn i { width: 15px !important; height: 15px !important; }
+
+            /* Calendario: celdas más compactas */
+            .calendar-cell { min-height: 3.2rem; padding-top: 0.1rem; }
+            .calendar-cell span { font-size: 0.72rem; }
+            .calendar-cell .mt-1.d-flex { gap: 0.5px; }
+            .calendar-cell .rounded-circle { width: 4.5px !important; height: 4.5px !important; }
+
+            /* Meses del calendario */
+            .card-header { font-size: 0.78rem; padding: 0.35rem 0.5rem; }
+            .bg-light.py-1.text-center { font-size: 0.62rem; padding: 0.2rem 0; }
+            .bg-light.py-1.text-center div { font-size: 0.62rem; }
+
+            /* Leyenda calendario */
+            #calendar-legend-interactive { font-size: 0.68rem; gap: 0.35rem !important; padding: 0.5rem !important; }
+            #calendar-legend-interactive > div { font-size: 0.68rem; }
+            #calendar-legend-interactive > div > div { width: 12px !important; height: 12px !important; }
+
+            /* Panel de impresión */
+            .print-panel { padding: 0.5rem 0.65rem; }
+            .print-month-chip { font-size: 0.7rem; padding: 0.2rem 0.45rem; }
+
+            /* Tablas */
+            .table th, .table td { font-size: 0.78rem; padding: 0.35rem 0.4rem; }
+
+            /* Tooltips */
+            #custom-tooltip { font-size: 0.7rem; max-width: 200px; padding: 6px 10px; }
+
+            /* Modales */
+            .modal-body { padding: 0.75rem; }
+            .modal-header { padding: 0.6rem 0.75rem; }
+            .modal-footer { padding: 0.5rem 0.75rem; }
+
+            /* Acordeón */
+            .accordion-button { font-size: 0.85rem; padding: 0.65rem 0.75rem; }
+            .accordion-body { padding: 0.65rem 0.75rem; }
+        }
+
+        /* --- Móviles (≤ 576px) --- */
+        @media (max-width: 576px) {
+            /* Header: una línea, texto mínimo */
+            header { padding: 0.5rem 0 !important; }
+            header .container-custom { gap: 0.4rem !important; }
+            header h1 { font-size: 0.82rem !important; }
+            header h1 i { display: none; }
+            #auth-status { font-size: 0.6rem; }
+
+            /* Tabs: icono solo, texto oculto */
+            .tab-btn { padding: 0.55rem 0.15rem !important; font-size: 0.65rem; }
+            .tab-btn div span { display: none; }
+            .tab-btn div i { width: 18px !important; height: 18px !important; }
+
+            /* Calendario: muy compacto */
+            .calendar-cell { min-height: 2.6rem; padding-top: 0.05rem; }
+            .calendar-cell span { font-size: 0.65rem; }
+            .calendar-cell .rounded-circle { width: 3.5px !important; height: 3.5px !important; }
+            .calendar-cell .fw-bold.text-secondary { font-size: 0.5rem !important; }
+
+            /* Meses del calendario */
+            .card-header { font-size: 0.72rem; padding: 0.25rem 0.4rem; }
+            .bg-light.py-1.text-center div { font-size: 0.55rem; }
+
+            /* Leyenda: 2 columnas */
+            #calendar-legend-interactive { gap: 0.25rem 0.4rem !important; justify-content: center; font-size: 0.6rem; }
+            #calendar-legend-interactive > div > div { width: 10px !important; height: 10px !important; }
+
+            /* Panel de impresión */
+            .print-panel { padding: 0.4rem 0.5rem; }
+            .print-month-chip { font-size: 0.65rem; padding: 0.15rem 0.35rem; }
+
+            /* Botón de ayuda oculto en móvil */
+            header button.btn-outline-light { display: none !important; }
+
+            /* Notificaciones */
+            #notification-area { padding: 0.5rem !important; }
+            #notification-msg { font-size: 0.8rem; }
+
+            /* Acordeón: más compacto */
+            .accordion-button { font-size: 0.8rem; padding: 0.55rem 0.6rem; gap: 0.35rem; }
+            .accordion-body { padding: 0.5rem; }
+
+            /* Tablas: scroll horizontal en móvil */
+            .table-responsive { font-size: 0.72rem; }
+
+            /* Listas de profesorado y festivos */
+            #list-teachers { max-height: 180px !important; }
+            .list-group-item { font-size: 0.8rem; padding: 0.4rem 0.6rem; }
+
+            /* Botones de acción más compactos */
+            .btn { padding: 0.35rem 0.65rem; font-size: 0.8rem; }
+            .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+
+            /* Input de token */
+            #input-github-token { font-size: 0.72rem; }
+
+            /* Modal de solicitud */
+            .form-check-label { font-size: 0.8rem; }
+        }
+
+        /* --- Móviles muy pequeños (≤ 380px) --- */
+        @media (max-width: 380px) {
+            .calendar-cell { min-height: 2.2rem; }
+            .calendar-cell span { font-size: 0.58rem; }
+            .card-header { font-size: 0.65rem; }
+            .bg-light.py-1.text-center div { font-size: 0.5rem; }
+            .tab-btn { padding: 0.45rem 0.1rem !important; }
+            .tab-btn div i { width: 16px !important; height: 16px !important; }
+        }
+
+        /* --- Orientación landscape en móvil --- */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .calendar-cell { min-height: 2.2rem; }
+            header { padding: 0.25rem 0 !important; }
+            .tab-btn { padding: 0.35rem 0.15rem !important; }
+            .tab-btn div span { display: none; }
+        }
+
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
