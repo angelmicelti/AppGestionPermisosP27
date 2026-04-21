@@ -272,6 +272,11 @@
                 display: none !important;
             }
 
+            /* Ocultar meses no seleccionados para impresión */
+            #calendar-grid.print-layout > div.print-month-hidden {
+                display: none !important;
+            }
+
             /* Título del calendario al imprimir */
             .print-calendar-title {
                 display: block !important;
@@ -996,23 +1001,34 @@
             <div class="print-calendar-title" id="print-cal-title">Calendario de Asuntos Propios - Curso Escolar</div>
             <div class="print-calendar-subtitle" id="print-cal-subtitle"></div>
 
-            <!-- Panel de impresión con selector de meses -->
-            <div class="print-panel no-print" id="print-panel">
-                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <i data-lucide="printer" style="width:16px; color:#2563EB"></i>
-                        <span class="fw-bold small text-secondary">Imprimir calendario (A3 vertical)</span>
+            <!-- Acordeón de impresión A3 (inicialmente replegado) -->
+            <div class="accordion no-print mb-3" id="accordionPrint">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrint" aria-expanded="false" aria-controls="collapsePrint">
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <i data-lucide="printer" style="width:18px"></i>
+                                <span class="fw-bold">Imprimir calendario (A3 vertical)</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapsePrint" class="accordion-collapse collapse" data-bs-parent="#accordionPrint">
+                        <div class="accordion-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                <span class="small text-secondary">Selecciona los meses a imprimir:</span>
+                                <div class="d-flex gap-2">
+                                    <button onclick="window.app.toggleAllPrintMonths(true)" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:0.72rem">Todos</button>
+                                    <button onclick="window.app.toggleAllPrintMonths(false)" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:0.72rem">Ninguno</button>
+                                </div>
+                            </div>
+                            <div id="print-month-selector" class="d-flex flex-wrap gap-2 mb-2"></div>
+                            <div class="d-flex justify-content-end">
+                                <button onclick="window.app.printCalendar()" id="btn-print-calendar" class="btn btn-primary d-flex align-items-center gap-2 btn-sm">
+                                    <i data-lucide="printer" style="width:16px"></i> Imprimir seleccionados
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button onclick="window.app.toggleAllPrintMonths(true)" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:0.72rem">Todos</button>
-                        <button onclick="window.app.toggleAllPrintMonths(false)" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:0.72rem">Ninguno</button>
-                    </div>
-                </div>
-                <div id="print-month-selector" class="d-flex flex-wrap gap-2 mb-2"></div>
-                <div class="d-flex justify-content-end">
-                    <button onclick="window.app.printCalendar()" id="btn-print-calendar" class="btn btn-primary d-flex align-items-center gap-2 btn-sm">
-                        <i data-lucide="printer" style="width:16px"></i> Imprimir seleccionados
-                    </button>
                 </div>
             </div>
 
@@ -3666,8 +3682,17 @@
                 }
             }
 
-            // Renderizar solo los meses seleccionados
-            renderCalendar(selectedMonths);
+            // Usar CSS para ocultar meses no seleccionados (más fiable en móvil que re-renderizar)
+            const grid = document.getElementById('calendar-grid');
+            const monthDivs = grid.querySelectorAll('div[data-month-idx]');
+            monthDivs.forEach(div => {
+                const idx = parseInt(div.dataset.monthIdx, 10);
+                if (selectedMonths.includes(idx)) {
+                    div.classList.remove('print-month-hidden');
+                } else {
+                    div.classList.add('print-month-hidden');
+                }
+            });
 
             // Calcular mejor layout automático
             const n = selectedMonths.length;
@@ -3679,7 +3704,6 @@
                 `@media print { @page { size: A3 ${layout.orientation}; margin: 10mm; } }`;
 
             // Aplicar clases de layout y tamaño al grid
-            const grid = document.getElementById('calendar-grid');
             grid.classList.remove('print-layout', 'print-size-xl', 'print-size-lg', 'print-size-md', 'print-size-sm');
             grid.classList.add('print-layout', `print-size-${sizeLevel}`);
             grid.style.gridTemplateColumns = `repeat(${layout.cols}, 1fr)`;
@@ -3692,20 +3716,33 @@
             const originalTitle = document.title;
             document.title = `PermisosP${shortYear}_${abbrMonths}_${y + 1}.pdf`;
 
-            // Abrir diálogo de impresión y restaurar al terminar
+            // Guardar referencia para limpieza
+            let restored = false;
             const restoreCalendar = () => {
+                if (restored) return;
+                restored = true;
                 grid.classList.remove('print-layout', 'print-size-xl', 'print-size-lg', 'print-size-md', 'print-size-sm');
                 grid.style.gridTemplateColumns = '';
                 grid.style.gap = '';
+                // Mostrar todos los meses de nuevo
+                monthDivs.forEach(div => div.classList.remove('print-month-hidden'));
                 document.getElementById('print-page-style').textContent =
                     '@media print { @page { size: A3 landscape; margin: 10mm; } }';
                 document.title = originalTitle;
-                renderCalendar();
                 window.removeEventListener('afterprint', restoreCalendar);
             };
             window.addEventListener('afterprint', restoreCalendar);
 
-            window.print();
+            // Fallback: si afterprint no se dispara (algunos navegadores móviles),
+            // restaurar tras un tiempo prudencial
+            setTimeout(() => {
+                if (!restored) restoreCalendar();
+            }, 3000);
+
+            // Pequeño retardo para asegurar que el CSS se aplica antes de imprimir
+            requestAnimationFrame(() => {
+                window.print();
+            });
         };
 
         // Obtener meses seleccionados del selector
@@ -3770,11 +3807,14 @@
             const container = document.getElementById('calendar-grid'); container.innerHTML = '';
             const y = window.app.config.startYear;
             const allMonths = [ {y,m:8},{y,m:9},{y,m:10},{y,m:11},{y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5} ];
-            const months = monthIndices ? monthIndices.map(i => allMonths[i]) : allMonths;
             const mNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-            months.forEach(item => {
-                const col = document.createElement('div'); col.className = 'col-md-6 col-lg-4';
+            // Siempre renderizar los 10 meses del curso; si se pasa monthIndices,
+            // se usará CSS para ocultar los no seleccionados (más fiable en móvil)
+            allMonths.forEach((item, idx) => {
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-lg-4';
+                col.dataset.monthIdx = idx;
                 const card = document.createElement('div'); card.className = "card h-100 shadow-sm border-0";
                 let html = `<div class="card-header text-center fw-bold bg-light text-secondary border-bottom-0">${mNames[item.m]} ${item.y}</div>`;
                 html += `<div class="bg-light py-1 text-center small text-secondary border-top" style="display:grid; grid-template-columns: repeat(7, 1fr)"><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>`;
