@@ -267,13 +267,17 @@
                 box-sizing: border-box;
             }
 
-            /* Ocultar botones, selector de meses y leyenda interactiva al imprimir */
-            .no-print, #btn-print-calendar, #calendar-legend-interactive {
-                display: none !important;
+            /* Orientación landscape: rotar contenido si el navegador ignora @page size */
+            #view-calendar.print-landscape {
+                transform: rotate(90deg) translateY(-100%);
+                transform-origin: top left;
+                width: 100vh;
+                height: 100vw;
+                overflow: hidden;
             }
 
-            /* Ocultar meses no seleccionados para impresión */
-            #calendar-grid.print-layout > div.print-month-hidden {
+            /* Ocultar botones, selector de meses y leyenda interactiva al imprimir */
+            .no-print, #btn-print-calendar, #calendar-legend-interactive {
                 display: none !important;
             }
 
@@ -3682,17 +3686,34 @@
                 }
             }
 
-            // Usar CSS para ocultar meses no seleccionados (más fiable en móvil que re-renderizar)
+            // Nombre del archivo PDF con meses abreviados (cambiar ANTES de manipular el DOM)
+            const shortNames = ['Se', 'Oc', 'No', 'Di', 'En', 'Fe', 'Mr', 'Ab', 'My', 'Ju'];
+            const abbrMonths = selectedMonths.map(idx => shortNames[idx]).join('');
+            const shortYear = String(y).slice(-2);
+            const originalTitle = document.title;
+            const pdfTitle = `PermisosP${shortYear}_${abbrMonths}_${y + 1}.pdf`;
+            document.title = pdfTitle;
+
+            // ============================================
+            // ELIMINAR FÍSICAMENTE del DOM los meses no seleccionados
+            // (la única forma 100% fiable en móvil/tablet)
+            // ============================================
             const grid = document.getElementById('calendar-grid');
-            const monthDivs = grid.querySelectorAll('div[data-month-idx]');
-            monthDivs.forEach(div => {
+            const allMonthDivs = Array.from(grid.querySelectorAll(':scope > div[data-month-idx]'));
+            const storageDiv = document.createElement('div'); // contenedor temporal oculto
+
+            allMonthDivs.forEach(div => {
                 const idx = parseInt(div.dataset.monthIdx, 10);
-                if (selectedMonths.includes(idx)) {
-                    div.classList.remove('print-month-hidden');
-                } else {
-                    div.classList.add('print-month-hidden');
+                if (!selectedMonths.includes(idx)) {
+                    // Mover a almacenamiento temporal (se elimina del grid)
+                    storageDiv.appendChild(div);
                 }
             });
+
+            // Reordenar los meses seleccionados que quedan en el grid
+            const visibleDivs = Array.from(grid.querySelectorAll(':scope > div[data-month-idx]'));
+            visibleDivs.sort((a, b) => parseInt(a.dataset.monthIdx) - parseInt(b.dataset.monthIdx));
+            visibleDivs.forEach(div => grid.appendChild(div));
 
             // Calcular mejor layout automático
             const n = selectedMonths.length;
@@ -3703,29 +3724,40 @@
             document.getElementById('print-page-style').textContent =
                 `@media print { @page { size: A3 ${layout.orientation}; margin: 10mm; } }`;
 
+            // Aplicar clase de orientación al contenedor (rotación CSS para móviles que ignoran @page)
+            const viewCalendar = document.getElementById('view-calendar');
+            viewCalendar.classList.remove('print-landscape');
+            if (layout.orientation === 'landscape') {
+                viewCalendar.classList.add('print-landscape');
+            }
+
             // Aplicar clases de layout y tamaño al grid
             grid.classList.remove('print-layout', 'print-size-xl', 'print-size-lg', 'print-size-md', 'print-size-sm');
             grid.classList.add('print-layout', `print-size-${sizeLevel}`);
             grid.style.gridTemplateColumns = `repeat(${layout.cols}, 1fr)`;
             grid.style.gap = '4mm';
 
-            // Nombre del archivo PDF con meses abreviados
-            const shortNames = ['Se', 'Oc', 'No', 'Di', 'En', 'Fe', 'Mr', 'Ab', 'My', 'Ju'];
-            const abbrMonths = selectedMonths.map(idx => shortNames[idx]).join('');
-            const shortYear = String(y).slice(-2);
-            const originalTitle = document.title;
-            document.title = `PermisosP${shortYear}_${abbrMonths}_${y + 1}.pdf`;
-
             // Guardar referencia para limpieza
             let restored = false;
             const restoreCalendar = () => {
                 if (restored) return;
                 restored = true;
+
+                // Restaurar clases y estilos del grid
                 grid.classList.remove('print-layout', 'print-size-xl', 'print-size-lg', 'print-size-md', 'print-size-sm');
                 grid.style.gridTemplateColumns = '';
                 grid.style.gap = '';
-                // Mostrar todos los meses de nuevo
-                monthDivs.forEach(div => div.classList.remove('print-month-hidden'));
+
+                // Devolver todos los meses al grid y reordenarlos
+                while (storageDiv.firstChild) {
+                    grid.appendChild(storageDiv.firstChild);
+                }
+                const allDivs = Array.from(grid.querySelectorAll(':scope > div[data-month-idx]'));
+                allDivs.sort((a, b) => parseInt(a.dataset.monthIdx) - parseInt(b.dataset.monthIdx));
+                allDivs.forEach(div => grid.appendChild(div));
+
+                // Restaurar orientación y título
+                viewCalendar.classList.remove('print-landscape');
                 document.getElementById('print-page-style').textContent =
                     '@media print { @page { size: A3 landscape; margin: 10mm; } }';
                 document.title = originalTitle;
@@ -3737,12 +3769,15 @@
             // restaurar tras un tiempo prudencial
             setTimeout(() => {
                 if (!restored) restoreCalendar();
-            }, 3000);
+            }, 5000);
 
-            // Pequeño retardo para asegurar que el CSS se aplica antes de imprimir
-            requestAnimationFrame(() => {
+            // Forzar reflow antes de imprimir (garantiza que el DOM actualizado se imprima)
+            void grid.offsetHeight;
+
+            // Retardo para asegurar que el navegador procesa los cambios antes de imprimir
+            setTimeout(() => {
                 window.print();
-            });
+            }, 200);
         };
 
         // Obtener meses seleccionados del selector
