@@ -3837,7 +3837,11 @@
         visibility: visible !important;
         position: absolute !important;
         top: 0 !important; left: 0 !important;
-        width: 100% !important; height: 100% !important;
+        width: 100% !important; height: 100vh !important;
+        max-height: 100vh !important;
+        overflow: hidden !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
         z-index: 999999 !important;
         background: white !important;
         padding: 5mm;
@@ -3918,13 +3922,40 @@
             window.print();
 
             // ===== PASO 7: Cleanup robusto (solo cuando el diálogo esté cerrado) =====
+            //
+            // IMPORTANTE — por qué se separan DOM-cleanup y restauración de título:
+            //
+            // En móvil (iOS/Android) window.print() abre un share-sheet y retorna
+            // inmediatamente. El usuario todavía NO ha guardado el PDF cuando el
+            // documento recupera el foco o visibility, por lo que restaurar
+            // document.title en ese momento hace que el PDF se nombre con el título
+            // original en vez del nombre calculado (bug 1).
+            //
+            // Además, si el usuario cambia el tamaño de papel en el diálogo, el
+            // navegador puede disparar focus/visibilitychange mientras el diálogo
+            // sigue abierto. Si en ese momento se restaura #view-calendar al DOM,
+            // el CSS heredado lo hace visible con todos los meses del curso (bug 2).
+            //
+            // Solución:
+            //  - cleanupDOM()   → elimina overlay y restaura #view-calendar.
+            //                     Solo se llama desde afterprint.
+            //  - restoreTitle() → restaura document.title.
+            //                     Se llama desde afterprint o safety-timeout.
+            //  - Se eliminan los manejadores focus y visibilitychange que
+            //    provocaban los bugs anteriores.
+
             let cleanupDone = false;
-            const cleanup = () => {
+            let titleRestored = false;
+
+            const restoreTitle = () => {
+                if (titleRestored) return;
+                titleRestored = true;
+                document.title = originalTitle;
+            };
+
+            const cleanupDOM = () => {
                 if (cleanupDone) return;
                 cleanupDone = true;
-
-                // Restaurar título
-                document.title = originalTitle;
 
                 // Eliminar overlay y estilos dinámicos
                 const overlayEl = document.getElementById('a3-print-overlay');
@@ -3947,25 +3978,14 @@
                 }
             };
 
-            // afterprint: se dispara al cerrar el diálogo
+            // afterprint: principal para escritorio y móvil.
+            // Se dispara cuando el diálogo de impresión se cierra definitivamente.
             window.addEventListener('afterprint', () => {
-                setTimeout(cleanup, 500);
+                setTimeout(() => { cleanupDOM(); restoreTitle(); }, 500);
             }, { once: true });
 
-            // focus: la ventana recupera el foco tras cerrar el diálogo
-            window.addEventListener('focus', function onFocus() {
-                if (!cleanupDone) setTimeout(cleanup, 1000);
-                window.removeEventListener('focus', onFocus);
-            });
-
-            // visibilitychange: el usuario vuelve a la página
-            document.addEventListener('visibilitychange', function onVisChange() {
-                if (!document.hidden && !cleanupDone) setTimeout(cleanup, 1000);
-                document.removeEventListener('visibilitychange', onVisChange);
-            });
-
-            // Safety net: 3 minutos
-            setTimeout(cleanup, 180000);
+            // Safety net: 10 minutos por si afterprint no se dispara en algún navegador.
+            setTimeout(() => { cleanupDOM(); restoreTitle(); }, 600000);
         };
 
         // Obtener meses seleccionados del selector
