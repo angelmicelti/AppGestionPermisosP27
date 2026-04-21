@@ -250,21 +250,7 @@
         @media print {
             /* @page se gestiona dinámicamente en #print-page-style */
 
-            /* ===== PROTECCIÓN: si el overlay de impresión está en el DOM,
-                   desactivar completamente el sistema legacy ===== */
-            body:has(#a3-print-overlay) * {
-                visibility: hidden !important;
-            }
-            body:has(#a3-print-overlay) #a3-print-overlay,
-            body:has(#a3-print-overlay) #a3-print-overlay * {
-                visibility: visible !important;
-            }
-            body:has(#a3-print-overlay) > *:not(#a3-print-overlay) {
-                display: none !important;
-            }
-
-            /* ===== Estilos legacy (solo si NO hay overlay) ===== */
-            body:not(:has(#a3-print-overlay)) * {
+            body * {
                 visibility: hidden;
             }
 
@@ -3695,10 +3681,12 @@
         }
 
         // Función para imprimir el calendario en A3 con layout automático
-        // Estrategia: overlay directo en la página principal con CSS agresivo.
-        // Esto funciona en TODOS los dispositivos porque el contenido está
-        // en el DOM de la página principal; al cambiar tamaño de papel en el
-        // diálogo de impresión, el navegador re-renderiza y solo ve el overlay.
+        // Estrategia: iframe autocontenido. El iframe tiene su propio documento
+        // HTML completo con estilos propios, sin CSS legacy de la página principal.
+        // Esto resuelve los 3 problemas del móvil:
+        // 1. document.title del iframe → nombre correcto del PDF
+        // 2. Sin CSS legacy → una sola página, sin desbordamiento
+        // 3. Documento independiente → no hay cleanup prematuro
         window.app.printCalendar = () => {
             // Si está cargando, no permitir imprimir
             if (window.app.isLoadingFromGitHub) {
@@ -3717,7 +3705,7 @@
             const mNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
             const allMonths = [ {y,m:8},{y,m:9},{y,m:10},{y,m:11},{y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5} ];
 
-            // Calcular layout
+            // Calcular layout (NO tocar el algoritmo — está perfecto)
             const n = selectedMonths.length;
             const layout = findBestPrintLayout(n);
             const sizeLevel = getSizeLevel(layout.cell_w);
@@ -3796,290 +3784,239 @@
                     <div class="p-legend-item"><div class="p-legend-color" style="background-color:#374151"><\/div> No Retribuido<\/div>
                 <\/div>`;
 
-            // Crear overlay en la página principal (oculto en pantalla, visible al imprimir)
-            const overlay = document.createElement('div');
-            overlay.id = 'a3-print-overlay';
-            overlay.innerHTML = `
-                <div class="p-title">${titleText}<\/div>
-                <div class="p-subtitle">${subtitleText}<\/div>
-                ${legendHtml}
-                <div class="p-grid" style="grid-template-columns:repeat(${layout.cols},1fr);grid-template-rows:repeat(${layout.rows},1fr)">
-                    ${monthsHtml}
-                <\/div>`;
-
-            // Estilos autocontenidos con prefijo p- (sin conflictos con Bootstrap ni estilos existentes)
-            const printStyle = document.createElement('style');
-            printStyle.id = 'a3-print-style';
             const pageOrientation = layout.orientation;
-            printStyle.textContent = `
-/* En pantalla: el overlay está completamente oculto */
-@media not print {
-    #a3-print-overlay {
-        display: none !important;
-    }
+
+            // ===== Construir documento HTML completo autocontenido =====
+            const iframeDoc = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>${pdfTitle}<\/title>
+<style>
+/* ===== Estilos de impresión — documento autocontenido ===== */
+@page { size: A3 ${pageOrientation}; margin: 10mm; }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #1f2937; background: white;
 }
 
-@media print {
-    @page { size: A3 ${pageOrientation}; margin: 10mm; }
+/* Contenedor principal: flex column que llena toda la página */
+body {
+    display: flex;
+    flex-direction: column;
+    padding: 5mm;
+}
 
-    /* ===== Neutralizar legacy @media print CSS ===== */
-    #view-calendar {
-        display: none !important;
-        position: static !important;
-        visibility: hidden !important;
-    }
-    #view-calendar * {
-        visibility: hidden !important;
-    }
+/* Título (no se estira) */
+.p-title {
+    text-align: center; font-size: 16pt; font-weight: bold;
+    margin-bottom: 3mm; color: #000;
+    flex-shrink: 0;
+}
 
-    /* Ocultar TODO excepto el overlay */
-    body > *:not(#a3-print-overlay) {
-        display: none !important;
-    }
+/* Subtítulo (no se estira) */
+.p-subtitle {
+    text-align: center; font-size: 10pt; color: #555;
+    margin-bottom: 4mm;
+    flex-shrink: 0;
+}
 
-    /* html/body deben ocupar toda la página para que height:100% funcione */
-    html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        height: 100% !important;
-    }
+/* Leyenda (no se estira) */
+.p-legend {
+    display: flex; flex-wrap: wrap; gap: 4mm; justify-content: center;
+    margin-bottom: 4mm; font-size: 7pt; color: #333;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    flex-shrink: 0;
+}
+.p-legend-item { display: flex; align-items: center; gap: 2px; }
+.p-legend-color {
+    width: 8px; height: 8px; border: 0.5px solid #999;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
 
-    /* ===== Overlay: contenedor flex que llena toda la página A3 ===== */
-    #a3-print-overlay {
-        display: flex !important;
-        flex-direction: column !important;
-        visibility: visible !important;
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        z-index: 999999 !important;
-        background: white !important;
-        padding: 5mm;
-        box-sizing: border-box;
-        font-family: system-ui, -apple-system, sans-serif;
-        color: #1f2937;
-    }
-    #a3-print-overlay * {
-        visibility: visible !important;
-    }
+/* Grid principal de meses — se expande para llenar el body */
+.p-grid {
+    flex: 1 1 0;
+    display: grid;
+    gap: 4mm;
+    align-items: stretch;
+    min-height: 0;
+}
+.p-grid > div {
+    break-inside: avoid; page-break-inside: avoid;
+    display: flex; flex-direction: column;
+    min-height: 0;
+}
 
-    /* Título (no se estira) */
-    .p-title {
-        text-align: center; font-size: 16pt; font-weight: bold;
-        margin-bottom: 3mm; color: #000;
-        flex-shrink: 0;
-    }
+/* Tarjeta de mes — llena toda la celda del grid */
+.p-card {
+    flex: 1; display: flex; flex-direction: column;
+    border: 1px solid #999; border-radius: 0.375rem; overflow: hidden;
+    min-height: 0;
+}
 
-    /* Subtítulo (no se estira) */
-    .p-subtitle {
-        text-align: center; font-size: 10pt; color: #555;
-        margin-bottom: 4mm;
-        flex-shrink: 0;
-    }
+/* Cabecera de mes (no se estira) */
+.p-card-header {
+    background-color: #2563EB !important; color: white !important;
+    text-align: center; font-weight: bold;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    padding: 3pt;
+    flex-shrink: 0;
+}
 
-    /* Leyenda (no se estira) */
-    .p-legend {
-        display: flex; flex-wrap: wrap; gap: 4mm; justify-content: center;
-        margin-bottom: 4mm; font-size: 7pt; color: #333;
-        -webkit-print-color-adjust: exact; print-color-adjust: exact;
-        flex-shrink: 0;
-    }
-    .p-legend-item { display: flex; align-items: center; gap: 2px; }
-    .p-legend-color {
-        width: 8px; height: 8px; border: 0.5px solid #999;
-        -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    }
+/* Encabezado días (no se estira) */
+.p-day-header {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    background-color: #f3f4f6; text-align: center;
+    font-size: 0.65rem; color: #6b7280; padding: 2px 0;
+    border-top: 1px solid #e5e7eb;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    flex-shrink: 0;
+}
 
-    /* ===== Grid principal de meses — se expande para llenar el overlay ===== */
-    .p-grid {
-        flex: 1 1 0;
-        display: grid;
-        gap: 4mm;
-        align-items: stretch;
-        min-height: 0;
-    }
-    .p-grid > div {
-        break-inside: avoid; page-break-inside: avoid;
-        display: flex; flex-direction: column;
-        min-height: 0;
-    }
+/* Grid 7 columnas — se expande para llenar la tarjeta */
+.p-grid-7 {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    flex: 1; grid-auto-rows: 1fr;
+    gap: 1px; background-color: #e5e7eb;
+    border-top: 1px solid #e5e7eb;
+    min-height: 0;
+}
 
-    /* Tarjeta de mes — llena toda la celda del grid */
-    .p-card {
-        flex: 1; display: flex; flex-direction: column;
-        border: 1px solid #999; border-radius: 0.375rem; overflow: hidden;
-        min-height: 0;
-    }
+/* Celda vacía */
+.p-empty { background-color: #f9fafb; }
 
-    /* Cabecera de mes (no se estira) */
-    .p-card-header {
-        background-color: #2563EB !important; color: white !important;
-        text-align: center; font-weight: bold;
-        -webkit-print-color-adjust: exact; print-color-adjust: exact;
-        padding: 3pt;
-        flex-shrink: 0;
-    }
+/* Celda de calendario */
+.p-cell {
+    background-color: white; display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    padding-top: 2px; cursor: default;
+}
+.p-num { font-weight: 500; }
+.p-num-wk { color: #dc2626; opacity: 0.5; }
+.p-num-loc { color: #7e22ce; font-weight: bold; }
+.p-num-prov { color: #c2410c; font-weight: bold; }
+.p-num-unavail { color: #374151; font-weight: bold; }
+.p-num-nonteach { color: #a16207; font-weight: bold; }
 
-    /* Encabezado días (no se estira) */
-    .p-day-header {
-        display: grid; grid-template-columns: repeat(7, 1fr);
-        background-color: #f3f4f6; text-align: center;
-        font-size: 0.65rem; color: #6b7280; padding: 2px 0;
-        border-top: 1px solid #e5e7eb;
-        -webkit-print-color-adjust: exact; print-color-adjust: exact;
-        flex-shrink: 0;
-    }
+/* Colores de fondo */
+.p-cell-weekend { background-color: #e0e0e0 !important; opacity: 1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.p-cell-local { background-color: #e8d5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.p-cell-prov { background-color: #fde2c8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.p-cell-unavail { background-color: #e8e8e8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.p-cell-nonteach { background-color: #fdf5c8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.p-cell-active { box-shadow: inset 0 0 0 1.5pt #3B82F6 !important; }
 
-    /* Grid 7 columnas — se expande para llenar la tarjeta */
-    .p-grid-7 {
-        display: grid; grid-template-columns: repeat(7, 1fr);
-        flex: 1; grid-auto-rows: 1fr;
-        gap: 1px; background-color: #e5e7eb;
-        border-top: 1px solid #e5e7eb;
-        min-height: 0;
-    }
+/* Puntitos */
+.p-dots { display: flex; gap: 1px; flex-wrap: wrap; justify-content: center; width: 100%; padding: 0 1px; margin-top: 1px; }
+.p-dot { width: 5px; height: 5px; border-radius: 50%; border: 0.5px solid rgba(0,0,0,0.15); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.p-dot-pri { background-color: #3B82F6 !important; }
+.p-dot-war { background-color: #F59E0B !important; }
+.p-dot-dark { background-color: #374151 !important; }
+.p-dot-sec { background-color: #6B7280 !important; }
+.p-dot-more { font-size: 7px; line-height: 5px; font-weight: bold; color: #6b7280; }
 
-    /* Celda vacía */
-    .p-empty { background-color: #f9fafb; }
+/* Tamaños según escala de celda */
+${sizeLevel === 'xl' ? `
+.p-cell { padding-top: 5pt; font-size: 15pt; }
+.p-num { font-size: 15pt; }
+.p-card-header { font-size: 19pt; padding: 7pt; }
+.p-day-header { font-size: 14pt; padding: 4pt 0; }
+.p-dot { width: 9px; height: 9px; }
+.p-dot-more { font-size: 9px; line-height: 9px; }
+.p-grid-7 { gap: 1.2px; }
+` : ''}
+${sizeLevel === 'lg' ? `
+.p-cell { padding-top: 3pt; font-size: 10pt; }
+.p-num { font-size: 10pt; }
+.p-card-header { font-size: 13pt; padding: 5pt; }
+.p-day-header { font-size: 9pt; padding: 3pt 0; }
+.p-dot { width: 6px; height: 6px; }
+.p-dot-more { font-size: 8px; line-height: 6px; }
+.p-grid-7 { gap: 0.7px; }
+` : ''}
+${sizeLevel === 'md' ? `
+.p-cell { padding-top: 2pt; font-size: 7.5pt; }
+.p-num { font-size: 7.5pt; }
+.p-card-header { font-size: 10pt; padding: 3pt; }
+.p-day-header { font-size: 7pt; padding: 1.5pt 0; }
+.p-dot { width: 4.5px; height: 4.5px; }
+.p-dot-more { font-size: 6pt; line-height: 4.5px; }
+.p-grid-7 { gap: 0.4px; }
+` : ''}
+${sizeLevel === 'sm' ? `
+.p-cell { padding-top: 1pt; font-size: 5.5pt; }
+.p-num { font-size: 5.5pt; }
+.p-card-header { font-size: 7pt; padding: 2pt 4pt; }
+.p-day-header { font-size: 5pt; padding: 1pt 0; }
+.p-dot { width: 3px; height: 3px; }
+.p-dot-more { font-size: 4pt; line-height: 3px; }
+.p-grid-7 { gap: 0.2px; }
+` : ''}
+<\/style>
+<\/head>
+<body>
+    <div class="p-title">${titleText}<\/div>
+    <div class="p-subtitle">${subtitleText}<\/div>
+    ${legendHtml}
+    <div class="p-grid" style="grid-template-columns:repeat(${layout.cols},1fr);grid-template-rows:repeat(${layout.rows},1fr)">
+        ${monthsHtml}
+    <\/div>
+<\/body>
+<\/html>`;
 
-    /* Celda de calendario */
-    .p-cell {
-        background-color: white; display: flex; flex-direction: column;
-        align-items: center; justify-content: flex-start;
-        padding-top: 2px; cursor: default;
-    }
-    .p-num { font-weight: 500; }
-    .p-num-wk { color: #dc2626; opacity: 0.5; }
-    .p-num-loc { color: #7e22ce; font-weight: bold; }
-    .p-num-prov { color: #c2410c; font-weight: bold; }
-    .p-num-unavail { color: #374151; font-weight: bold; }
-    .p-num-nonteach { color: #a16207; font-weight: bold; }
+            // ===== Crear iframe oculto y escribir el documento =====
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'position:fixed;left:-9999px;width:420mm;height:297mm;border:none;';
+            document.body.appendChild(iframe);
 
-    /* Colores de fondo */
-    .p-cell-weekend { background-color: #e0e0e0 !important; opacity: 1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .p-cell-local { background-color: #e8d5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .p-cell-prov { background-color: #fde2c8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .p-cell-unavail { background-color: #e8e8e8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .p-cell-nonteach { background-color: #fdf5c8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .p-cell-active { box-shadow: inset 0 0 0 1.5pt #3B82F6 !important; }
+            const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iDoc.open();
+            iDoc.write(iframeDoc);
+            iDoc.close();
 
-    /* Puntitos */
-    .p-dots { display: flex; gap: 1px; flex-wrap: wrap; justify-content: center; width: 100%; padding: 0 1px; margin-top: 1px; }
-    .p-dot { width: 5px; height: 5px; border-radius: 50%; border: 0.5px solid rgba(0,0,0,0.15); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .p-dot-pri { background-color: #3B82F6 !important; }
-    .p-dot-war { background-color: #F59E0B !important; }
-    .p-dot-dark { background-color: #374151 !important; }
-    .p-dot-sec { background-color: #6B7280 !important; }
-    .p-dot-more { font-size: 7px; line-height: 5px; font-weight: bold; color: #6b7280; }
-
-    /* ===== Tamaños según escala de celda ===== */
-    ${sizeLevel === 'xl' ? `
-    .p-cell { padding-top: 5pt; font-size: 15pt; }
-    .p-num { font-size: 15pt; }
-    .p-card-header { font-size: 19pt; padding: 7pt; }
-    .p-day-header { font-size: 14pt; padding: 4pt 0; }
-    .p-dot { width: 9px; height: 9px; }
-    .p-dot-more { font-size: 9px; line-height: 9px; }
-    .p-grid-7 { gap: 1.2px; }
-    ` : ''}
-    ${sizeLevel === 'lg' ? `
-    .p-cell { padding-top: 3pt; font-size: 10pt; }
-    .p-num { font-size: 10pt; }
-    .p-card-header { font-size: 13pt; padding: 5pt; }
-    .p-day-header { font-size: 9pt; padding: 3pt 0; }
-    .p-dot { width: 6px; height: 6px; }
-    .p-dot-more { font-size: 8px; line-height: 6px; }
-    .p-grid-7 { gap: 0.7px; }
-    ` : ''}
-    ${sizeLevel === 'md' ? `
-    .p-cell { padding-top: 2pt; font-size: 7.5pt; }
-    .p-num { font-size: 7.5pt; }
-    .p-card-header { font-size: 10pt; padding: 3pt; }
-    .p-day-header { font-size: 7pt; padding: 1.5pt 0; }
-    .p-dot { width: 4.5px; height: 4.5px; }
-    .p-dot-more { font-size: 6pt; line-height: 4.5px; }
-    .p-grid-7 { gap: 0.4px; }
-    ` : ''}
-    ${sizeLevel === 'sm' ? `
-    .p-cell { padding-top: 1pt; font-size: 5.5pt; }
-    .p-num { font-size: 5.5pt; }
-    .p-card-header { font-size: 7pt; padding: 2pt 4pt; }
-    .p-day-header { font-size: 5pt; padding: 1pt 0; }
-    .p-dot { width: 3px; height: 3px; }
-    .p-dot-more { font-size: 4pt; line-height: 3px; }
-    .p-grid-7 { gap: 0.2px; }
-    ` : ''}
-}`;
-
-            // Añadir overlay y estilos al DOM
-            document.body.appendChild(overlay);
-            document.head.appendChild(printStyle);
-
-            // Actualizar #print-page-style estático con el tamaño/orientación correcto
-            const printPageStyle = document.getElementById('print-page-style');
-            const originalPrintPageCSS = printPageStyle ? printPageStyle.textContent : '';
-            if (printPageStyle) {
-                printPageStyle.textContent = `@media print { @page { size: A3 ${pageOrientation}; margin: 10mm; } }`;
-            }
-
-            // Guardar título original y cambiar al nombre del PDF
-            const originalTitle = document.title;
-            document.title = pdfTitle;
-
-            // Función de limpieza
-            let cleanupDone = false;
-            const cleanup = () => {
-                if (cleanupDone) return;
-                cleanupDone = true;
-                document.title = originalTitle;
-                const overlayEl = document.getElementById('a3-print-overlay');
-                if (overlayEl) overlayEl.remove();
-                const styleEl = document.getElementById('a3-print-style');
-                if (styleEl) styleEl.remove();
-                // Restaurar #print-page-style original
-                if (printPageStyle) {
-                    printPageStyle.textContent = originalPrintPageCSS;
+            // Esperar a que el iframe cargue completamente antes de imprimir
+            const doPrint = () => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch(e) {
+                    // Fallback: si no se puede imprimir del iframe, imprimir la ventana principal
+                    console.warn('No se pudo imprimir del iframe, usando ventana principal:', e);
+                    window.print();
                 }
             };
 
-            // Imprimir usando la página principal (window.print)
-            // El overlay con clase p- es lo único visible durante la impresión
-            window.print();
+            // Esperar a que el iframe esté listo (DOMContentLoaded o load)
+            if (iframe.contentDocument.readyState === 'complete') {
+                doPrint();
+            } else {
+                iframe.addEventListener('load', doPrint, { once: true });
+            }
 
-            // ===== Estrategia de limpieza robusta para móvil =====
-            // El problema: en móvil, el diálogo de impresión permanece abierto
-            // mucho tiempo mientras el usuario configura formato/orientación.
-            // Si limpiamos demasiado pronto (ej: setTimeout 3s), el overlay
-            // y los estilos se eliminan MIENTRAS el diálogo sigue abierto.
-            // Al cambiar el formato, el navegador re-renderiza SIN el overlay,
-            // y el CSS legacy hace visible #view-calendar con TODOS los meses.
+            // Limpiar iframe después de imprimir
+            let iframeCleaned = false;
+            const removeIframe = () => {
+                if (iframeCleaned) return;
+                iframeCleaned = true;
+                setTimeout(() => {
+                    if (iframe.parentNode) iframe.remove();
+                }, 2000);
+            };
 
-            // 1) afterprint: se dispara al cerrar el diálogo (funciona en PC y muchos móviles)
-            window.addEventListener('afterprint', () => {
-                // Pequeño retraso para asegurar que el diálogo está completamente cerrado
-                setTimeout(cleanup, 500);
-            }, { once: true });
+            // Escuchar afterprint tanto del iframe como de la ventana principal
+            try {
+                iframe.contentWindow.addEventListener('afterprint', removeIframe, { once: true });
+            } catch(e) {}
+            window.addEventListener('afterprint', removeIframe, { once: true });
 
-            // 2) focus: cuando la ventana recupera el foco tras cerrar el diálogo de impresión
-            window.addEventListener('focus', function onFocus() {
-                if (!cleanupDone) {
-                    setTimeout(cleanup, 1000);
-                }
-                window.removeEventListener('focus', onFocus);
-            });
-
-            // 3) visibilitychange: cuando el usuario vuelve a la página tras el diálogo
-            document.addEventListener('visibilitychange', function onVisChange() {
-                if (!document.hidden && !cleanupDone) {
-                    setTimeout(cleanup, 1000);
-                }
-                document.removeEventListener('visibilitychange', onVisChange);
-            });
-
-            // 4) Safety net: limpiar tras 2 minutos (último recurso)
-            setTimeout(cleanup, 120000);
+            // Fallback: eliminar iframe tras 3 minutos
+            setTimeout(removeIframe, 180000);
         };
 
         // Obtener meses seleccionados del selector
