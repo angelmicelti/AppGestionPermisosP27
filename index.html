@@ -3597,46 +3597,54 @@
             const HEADER_H = 20; // título + subtítulo
 
             // Decidir orientación según número de meses:
-            // 1-3 meses  → portrait  (aprovechar la altura)
-            // 4-5 meses  → landscape (necesitan más ancho)
-            // 6-10 meses → landscape (siempre)
-            const forcedOrientation = (n <= 3) ? 'portrait' : 'landscape';
+            // 1-2 meses  → landscape (horizontal, aprovechar el ancho A3)
+            // 3+ meses   → lo que decida el algoritmo (probar portrait y landscape)
+            const forceOrientation = (n <= 2) ? 'landscape' : null;
 
-            const pw = (forcedOrientation === 'portrait') ? A3_W : A3_H;
-            const ph = (forcedOrientation === 'portrait') ? A3_H : A3_W;
-            const usable_w = pw - 2 * MARGIN;
-            const usable_h = ph - 2 * MARGIN;
+            // Orientaciones a probar: si está forzada, solo una; si no, ambas
+            const orientations = forceOrientation ? [forceOrientation] : ['portrait', 'landscape'];
 
-            // Probar distintas configuraciones de columnas y quedarse con la mejor
-            let best = null;
             const ASPECT_IDEAL = 0.875; // proporción ideal ancho/alto de un mes
+            let best = null;
 
-            for (let cols = 1; cols <= n; cols++) {
-                const rows = Math.ceil(n / cols);
-                const month_w = (usable_w - (cols - 1) * GAP) / cols;
-                const month_h = (usable_h - HEADER_H - (rows - 1) * GAP) / rows;
+            for (const orient of orientations) {
+                const pw = (orient === 'portrait') ? A3_W : A3_H;
+                const ph = (orient === 'portrait') ? A3_H : A3_W;
+                const usable_w = pw - 2 * MARGIN;
+                const usable_h = ph - 2 * MARGIN;
 
-                if (month_w <= 0 || month_h <= 0) continue;
-                if (month_w < 56) continue;  // mínimo 7 cols × 8mm
-                if (month_h < 40) continue;  // mínimo 8 filas × 5mm
+                for (let cols = 1; cols <= n; cols++) {
+                    const rows = Math.ceil(n / cols);
+                    const month_w = (usable_w - (cols - 1) * GAP) / cols;
+                    const month_h = (usable_h - HEADER_H - (rows - 1) * GAP) / rows;
 
-                const aspect = month_w / month_h;
-                const aspect_dev = Math.abs(aspect - ASPECT_IDEAL) / ASPECT_IDEAL;
-                const area = month_w * month_h;
-                const score = area * (1 - aspect_dev * 0.5);
+                    if (month_w <= 0 || month_h <= 0) continue;
+                    if (month_w < 56) continue;  // mínimo 7 cols × 8mm
+                    if (month_h < 40) continue;  // mínimo 8 filas × 5mm
 
-                if (!best || score > best.score) {
-                    best = { orientation: forcedOrientation, cols, rows, month_w, month_h, score };
+                    const aspect = month_w / month_h;
+                    const aspect_dev = Math.abs(aspect - ASPECT_IDEAL) / ASPECT_IDEAL;
+                    const area = month_w * month_h;
+                    const score = area * (1 - aspect_dev * 0.5);
+
+                    if (!best || score > best.score) {
+                        best = { orientation: orient, cols, rows, month_w, month_h, score };
+                    }
                 }
             }
 
             // Fallback si ninguna configuración es válida
             if (!best) {
+                const orient = forceOrientation || 'landscape';
+                const pw = (orient === 'portrait') ? A3_W : A3_H;
+                const ph = (orient === 'portrait') ? A3_H : A3_W;
+                const usable_w = pw - 2 * MARGIN;
+                const usable_h = ph - 2 * MARGIN;
                 const cols = Math.min(n, 3);
                 const rows = Math.ceil(n / cols);
                 const month_w = (usable_w - (cols - 1) * GAP) / cols;
                 const month_h = (usable_h - HEADER_H - (rows - 1) * GAP) / rows;
-                best = { orientation: forcedOrientation, cols, rows, month_w, month_h, score: 0 };
+                best = { orientation: orient, cols, rows, month_w, month_h, score: 0 };
             }
 
             return best;
@@ -3677,35 +3685,33 @@
             const layout = findBestPrintLayout(n);
             const sizeLevel = getSizeLevel(layout.month_w);
 
-            // Nombre del archivo PDF
+            // Ordenar meses seleccionados (sin mutar el array original)
+            const sortedMonths = [...selectedMonths].sort((a, b) => a - b);
+
+            // Nombre del archivo PDF (con siglas de meses seleccionados)
             const shortNames = ['Se', 'Oc', 'No', 'Di', 'En', 'Fe', 'Mr', 'Ab', 'My', 'Ju'];
-            const abbrMonths = selectedMonths.map(idx => shortNames[idx]).join('');
+            const abbrMonths = sortedMonths.map(idx => shortNames[idx]).join('');
             const shortYear = String(y).slice(-2);
-            const pdfTitle = `PermisosP${shortYear}_${abbrMonths}_${y + 1}.pdf`;
+            const pdfTitle = `PermisosP${shortYear}_${abbrMonths}_${y + 1}`;
 
             // Título y subtítulo
             const titleText = `Calendario de Asuntos Propios - Curso ${y}/${y + 1}`;
-            const subtitleText = (selectedMonths.length === allMonths.length)
+            const subtitleText = (sortedMonths.length === allMonths.length)
                 ? 'Curso completo (Septiembre - Junio)'
-                : selectedMonths.map(idx => mNames[allMonths[idx].m]).join(' | ');
+                : sortedMonths.map(idx => mNames[allMonths[idx].m]).join(' | ');
 
-            // Recoger los estilos de la página actual (para que la impresión se vea igual)
-            const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
-
-            // Construir HTML de los meses seleccionados
+            // Construir HTML de los meses seleccionados (solo los seleccionados)
             let monthsHtml = '';
-            selectedMonths.sort((a, b) => a - b).forEach(idx => {
+            sortedMonths.forEach(idx => {
                 const item = allMonths[idx];
-                const col = document.createElement('div');
-                col.dataset.monthIdx = idx;
-                const card = document.createElement('div');
-                card.className = "card h-100 shadow-sm border-0";
-                let html = `<div class="card-header text-center fw-bold bg-light text-secondary border-bottom-0">${mNames[item.m]} ${item.y}</div>`;
-                html += `<div class="bg-light py-1 text-center small text-secondary border-top" style="display:grid; grid-template-columns: repeat(7, 1fr)"><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>`;
-                html += `<div class="calendar-grid-7 border-top">`;
+                let html = `<div data-month-idx="${idx}">`;
+                html += `<div class="card h-100 shadow-sm border-0">`;
+                html += `<div class="card-header text-center fw-bold bg-light text-secondary border-bottom-0">${mNames[item.m]} ${item.y}<\/div>`;
+                html += `<div class="day-header"><div>L<\/div><div>M<\/div><div>X<\/div><div>J<\/div><div>V<\/div><div>S<\/div><div>D<\/div><\/div>`;
+                html += `<div class="calendar-grid-7">`;
                 const dim = new Date(item.y, item.m+1, 0).getDate();
                 const off = (new Date(item.y, item.m, 1).getDay() + 6) % 7;
-                for(let i=0; i<off; i++) html += `<div class="bg-light"></div>`;
+                for(let i=0; i<off; i++) html += `<div class="empty-cell"><\/div>`;
                 for(let d=1; d<=dim; d++) {
                     const dateStr = `${item.y}-${String(item.m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                     const day = new Date(item.y, item.m, d).getDay();
@@ -3715,93 +3721,147 @@
                     const isU = (window.app.config.unavailableDays||[]).includes(dateStr);
                     const isN = (window.app.config.nonTeachingDays||[]).includes(dateStr);
                     const reqs = window.app.requests.filter(r => r.date === dateStr);
-                    let cls = "calendar-cell"; let num = "small fw-medium";
-                    if(isW) { cls += " cell-weekend"; num="text-danger opacity-50"; }
-                    else if(isL) { cls += " cell-local"; num="text-purple-700 fw-bold"; }
-                    else if(isP) { cls += " cell-prov"; num="text-orange-700 fw-bold"; }
-                    else if(isU) { cls += " cell-unavailable"; num="text-gray-700 fw-bold"; }
-                    else if(isN) { cls += " cell-non-teaching"; num="text-yellow-700 fw-bold"; }
+                    let cls = "calendar-cell"; let numCls = "day-num";
+                    if(isW) { cls += " cell-weekend"; numCls="day-num weekend-num"; }
+                    else if(isL) { cls += " cell-local"; numCls="day-num local-num"; }
+                    else if(isP) { cls += " cell-prov"; numCls="day-num prov-num"; }
+                    else if(isU) { cls += " cell-unavailable"; numCls="day-num unavail-num"; }
+                    else if(isN) { cls += " cell-non-teaching"; numCls="day-num nonteach-num"; }
                     if(reqs.length>0) cls += " cell-active";
                     let dots = '';
                     if(reqs.length > 0) {
-                        dots = '<div class="mt-1 d-flex gap-1 flex-wrap justify-content-center w-100 px-1">';
+                        dots = '<div class="dots-row">';
                         const max = 3; const count = reqs.length; const display = count > max ? max-1 : count;
                         for(let i=0; i<display; i++) {
-                            const t = reqs[i].type; let c = 'bg-secondary';
-                            if(t === 'paid_teaching') c = 'bg-primary'; if(t === 'paid_non_teaching') c = 'bg-warning'; if(t === 'unpaid') c = 'bg-dark';
-                            dots += `<div class="rounded-circle ${c}" style="width:6px; height:6px"></div>`;
+                            const t = reqs[i].type; let c = 'dot-secondary';
+                            if(t === 'paid_teaching') c = 'dot-primary'; if(t === 'paid_non_teaching') c = 'dot-warning'; if(t === 'unpaid') c = 'dot-dark';
+                            dots += `<div class="dot ${c}"><\/div>`;
                         }
-                        if(count > max) dots += `<div style="font-size:9px; line-height:6px" class="fw-bold text-secondary">+${count-(max-1)}</div>`;
-                        dots += '</div>';
+                        if(count > max) dots += `<div class="dot-overflow">+${count-(max-1)}<\/div>`;
+                        dots += '<\/div>';
                     }
-                    html += `<div class="${cls}"><span class="${num}">${d}</span>${dots}</div>`;
+                    html += `<div class="${cls}"><span class="${numCls}">${d}<\/span>${dots}<\/div>`;
                 }
-                html += `</div>`;
-                card.innerHTML = html;
-                col.appendChild(card);
-                monthsHtml += col.outerHTML;
+                html += `<\/div><\/div><\/div>`;
+                monthsHtml += html;
             });
 
             // Leyenda para impresión
             const legendHtml = `
                 <div class="print-legend">
-                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#e0e0e0"></div> Finde</div>
-                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#e8d5f5"></div> F. Local</div>
-                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#fde2c8"></div> F. Provincial</div>
-                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#e8e8e8"></div> No Disponible</div>
-                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#fdf5c8"></div> No Lectivo</div>
-                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#3B82F6"></div> Retr. Lectivo</div>
-                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#F59E0B"></div> Retr. NO Lectivo</div>
-                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#374151"></div> No Retribuido</div>
-                </div>`;
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#e0e0e0"><\/div> Finde<\/div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#e8d5f5"><\/div> F. Local<\/div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#fde2c8"><\/div> F. Provincial<\/div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#e8e8e8"><\/div> No Disponible<\/div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#fdf5c8"><\/div> No Lectivo<\/div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#3B82F6"><\/div> Retr. Lectivo<\/div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#F59E0B"><\/div> Retr. NO Lectivo<\/div>
+                    <div class="print-legend-item"><div class="print-legend-color" style="background-color:#374151"><\/div> No Retribuido<\/div>
+                <\/div>`;
 
-            // Recoger estilos inline y links CSS
-            let stylesHtml = '';
-            styles.forEach(s => { stylesHtml += s.outerHTML; });
-
-            // Construir documento completo para la ventana nueva
+            // Construir documento completo AUTOCONTENIDO (sin copiar estilos de la página padre)
             const pageOrientation = layout.orientation;
             const printDoc = `<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>${pdfTitle}</title>
-    ${stylesHtml}
+    <title>${pdfTitle}<\/title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         @page { size: A3 ${pageOrientation}; margin: 10mm; }
-        body { margin: 0; padding: 0; background: white !important; }
-        body * { visibility: visible !important; }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; padding: 0; }
+        body {
+            display: flex; flex-direction: column;
+            background: white !important; color: #1f2937;
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 5mm;
+        }
 
+        /* Título y subtítulo */
         .print-calendar-title {
-            display: block; text-align: center; font-size: 16pt; font-weight: bold;
-            margin-bottom: 4mm; color: #000;
+            text-align: center; font-size: 16pt; font-weight: bold;
+            margin-bottom: 4mm; color: #000; flex-shrink: 0;
         }
         .print-calendar-subtitle {
-            display: block; text-align: center; font-size: 10pt; color: #555;
-            margin-bottom: 6mm;
+            text-align: center; font-size: 10pt; color: #555;
+            margin-bottom: 6mm; flex-shrink: 0;
         }
+
+        /* Leyenda */
         .print-legend {
             display: flex; flex-wrap: wrap; gap: 4mm; justify-content: center;
             margin-bottom: 5mm; font-size: 7pt; color: #333;
             -webkit-print-color-adjust: exact; print-color-adjust: exact;
+            flex-shrink: 0;
         }
         .print-legend-item { display: flex; align-items: center; gap: 2px; }
-        .print-legend-color { width: 8px; height: 8px; border: 0.5px solid #999; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .print-legend-color {
+            width: 8px; height: 8px; border: 0.5px solid #999;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        }
 
+        /* Grid principal de meses */
         #print-grid {
             display: grid;
             grid-template-columns: repeat(${layout.cols}, 1fr);
             gap: 4mm;
-            flex: 1 1 0;
+            flex: 1 1 0; min-height: 0;
             align-items: stretch;
         }
-        #print-grid > div { break-inside: avoid; page-break-inside: avoid; display: flex; flex-direction: column; }
-        #print-grid > div > .card { flex: 1; display: flex; flex-direction: column; }
-        #print-grid .card > .calendar-grid-7 { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 1fr; }
-        #print-grid .card { box-shadow: none !important; border: 1px solid #999 !important; }
-        .calendar-cell { cursor: default !important; }
+        #print-grid > div {
+            break-inside: avoid; page-break-inside: avoid;
+            display: flex; flex-direction: column;
+        }
+        #print-grid > div > .card {
+            flex: 1; display: flex; flex-direction: column;
+            box-shadow: none !important; border: 1px solid #999 !important;
+            border-radius: 0.375rem; overflow: hidden;
+        }
 
-        /* Colores fondo */
+        /* Cabecera de mes */
+        .card-header {
+            background-color: #2563EB !important; color: white !important;
+            text-align: center; font-weight: bold;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
+            flex-shrink: 0;
+        }
+
+        /* Encabezado días de la semana */
+        .day-header {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            background-color: #f3f4f6; text-align: center;
+            font-size: 0.65rem; color: #6b7280; padding: 2px 0;
+            border-top: 1px solid #e5e7eb;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
+            flex-shrink: 0;
+        }
+
+        /* Grid del calendario (7 columnas) */
+        .calendar-grid-7 {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            flex: 1; grid-auto-rows: 1fr;
+            gap: 1px; background-color: #e5e7eb;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        /* Celdas vacías (offset) */
+        .empty-cell { background-color: #f9fafb; }
+
+        /* Celdas del calendario */
+        .calendar-cell {
+            background-color: white; display: flex; flex-direction: column;
+            align-items: center; padding-top: 2px; cursor: default;
+            min-height: 0;
+        }
+        .day-num { font-weight: 500; }
+        .weekend-num { color: #dc2626; opacity: 0.5; }
+        .local-num { color: #7e22ce; font-weight: bold; }
+        .prov-num { color: #c2410c; font-weight: bold; }
+        .unavail-num { color: #374151; font-weight: bold; }
+        .nonteach-num { color: #a16207; font-weight: bold; }
+
+        /* Colores de fondo de celdas */
         .cell-weekend { background-color: #e0e0e0 !important; opacity: 1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .cell-local { background-color: #e8d5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .cell-prov { background-color: #fde2c8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -3810,77 +3870,84 @@
         .cell-active { box-shadow: inset 0 0 0 1.5pt #3B82F6 !important; }
 
         /* Puntitos */
-        .calendar-cell .rounded-circle { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; border: 0.5px solid rgba(0,0,0,0.15); }
-        .calendar-cell .rounded-circle.bg-primary { background-color: #3B82F6 !important; }
-        .calendar-cell .rounded-circle.bg-warning { background-color: #F59E0B !important; }
-        .calendar-cell .rounded-circle.bg-dark { background-color: #374151 !important; }
-        .calendar-cell .rounded-circle.bg-secondary { background-color: #6B7280 !important; }
+        .dots-row {
+            display: flex; gap: 1px; flex-wrap: wrap;
+            justify-content: center; width: 100%; padding: 0 1px;
+            margin-top: 1px;
+        }
+        .dot { width: 5px; height: 5px; border-radius: 50%; border: 0.5px solid rgba(0,0,0,0.15); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .dot-primary { background-color: #3B82F6 !important; }
+        .dot-warning { background-color: #F59E0B !important; }
+        .dot-dark { background-color: #374151 !important; }
+        .dot-secondary { background-color: #6B7280 !important; }
+        .dot-overflow { font-size: 7px; line-height: 5px; font-weight: bold; color: #6b7280; }
 
-        /* Cabecera de mes */
-        .card-header { background-color: #2563EB !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
-        /* Tamaño de fuentes según escala */
+        /* Tamaños de fuente según escala */
         ${sizeLevel === 'xl' ? `
-        .calendar-cell { padding-top: 5pt !important; font-size: 15pt !important; }
-        .calendar-cell span { font-size: 15pt !important; }
-        .card-header { font-size: 19pt !important; padding: 7pt !important; }
-        .bg-light.py-1.text-center { font-size: 14pt !important; padding: 4pt !important; }
-        .calendar-cell .rounded-circle { width: 9px !important; height: 9px !important; }
-        .calendar-cell .fw-bold.text-secondary { font-size: 11pt !important; }
-        .calendar-grid-7 { gap: 1.2px !important; }
+        .calendar-cell { padding-top: 5pt; font-size: 15pt; }
+        .day-num { font-size: 15pt; }
+        .card-header { font-size: 19pt; padding: 7pt; }
+        .day-header { font-size: 14pt; padding: 4pt 0; }
+        .dot { width: 9px; height: 9px; }
+        .dot-overflow { font-size: 9px; line-height: 9px; }
+        .calendar-grid-7 { gap: 1.2px; }
         ` : ''}
         ${sizeLevel === 'lg' ? `
-        .calendar-cell { padding-top: 3pt !important; font-size: 10pt !important; }
-        .calendar-cell span { font-size: 10pt !important; }
-        .card-header { font-size: 13pt !important; padding: 5pt !important; }
-        .bg-light.py-1.text-center { font-size: 9pt !important; padding: 3pt !important; }
-        .calendar-cell .rounded-circle { width: 6px !important; height: 6px !important; }
-        .calendar-cell .fw-bold.text-secondary { font-size: 8pt !important; }
-        .calendar-grid-7 { gap: 0.7px !important; }
+        .calendar-cell { padding-top: 3pt; font-size: 10pt; }
+        .day-num { font-size: 10pt; }
+        .card-header { font-size: 13pt; padding: 5pt; }
+        .day-header { font-size: 9pt; padding: 3pt 0; }
+        .dot { width: 6px; height: 6px; }
+        .dot-overflow { font-size: 8px; line-height: 6px; }
+        .calendar-grid-7 { gap: 0.7px; }
         ` : ''}
         ${sizeLevel === 'md' ? `
-        .calendar-cell { padding-top: 2pt !important; font-size: 7.5pt !important; }
-        .calendar-cell span { font-size: 7.5pt !important; }
-        .card-header { font-size: 10pt !important; padding: 3pt !important; }
-        .bg-light.py-1.text-center { font-size: 7pt !important; padding: 1.5pt !important; }
-        .calendar-cell .rounded-circle { width: 4.5px !important; height: 4.5px !important; }
-        .calendar-cell .fw-bold.text-secondary { font-size: 6pt !important; }
-        .calendar-grid-7 { gap: 0.4px !important; }
+        .calendar-cell { padding-top: 2pt; font-size: 7.5pt; }
+        .day-num { font-size: 7.5pt; }
+        .card-header { font-size: 10pt; padding: 3pt; }
+        .day-header { font-size: 7pt; padding: 1.5pt 0; }
+        .dot { width: 4.5px; height: 4.5px; }
+        .dot-overflow { font-size: 6pt; line-height: 4.5px; }
+        .calendar-grid-7 { gap: 0.4px; }
         ` : ''}
         ${sizeLevel === 'sm' ? `
-        .calendar-cell { padding-top: 1pt !important; font-size: 5.5pt !important; }
-        .calendar-cell span { font-size: 5.5pt !important; }
-        .card-header { font-size: 7pt !important; padding: 2pt 4pt !important; }
-        .bg-light.py-1.text-center { font-size: 5pt !important; padding: 1pt !important; }
-        .calendar-cell .rounded-circle { width: 3px !important; height: 3px !important; }
-        .calendar-cell .fw-bold.text-secondary { font-size: 4pt !important; }
-        .calendar-grid-7 { gap: 0.2px !important; }
+        .calendar-cell { padding-top: 1pt; font-size: 5.5pt; }
+        .day-num { font-size: 5.5pt; }
+        .card-header { font-size: 7pt; padding: 2pt 4pt; }
+        .day-header { font-size: 5pt; padding: 1pt 0; }
+        .dot { width: 3px; height: 3px; }
+        .dot-overflow { font-size: 4pt; line-height: 3px; }
+        .calendar-grid-7 { gap: 0.2px; }
         ` : ''}
-
-        /* Ocultar elementos no deseados */
-        .no-print, #btn-print-calendar, #calendar-legend-interactive,
-        .accordion, nav, header, #last-update-indicator, #custom-tooltip,
-        #notification-area, #app-loader, #interface-blocker { display: none !important; }
-
-        /* Layout flex vertical para rellenar la página */
-        html, body { height: 100%; }
-        body { display: flex; flex-direction: column; }
-        #print-grid { flex: 1 1 0; min-height: 0; }
     <\/style>
-</head>
+<\/head>
 <body>
-    <div class="print-calendar-title">${titleText}</div>
-    <div class="print-calendar-subtitle">${subtitleText}</div>
+    <div class="print-calendar-title">${titleText}<\/div>
+    <div class="print-calendar-subtitle">${subtitleText}<\/div>
     ${legendHtml}
     <div id="print-grid">
         ${monthsHtml}
-    </div>
-    <\/body>
-</html>`;
+    <\/div>
+<\/body>
+<\/html>`;
 
-            // Usar iframe invisible para imprimir (sin ventana abierta)
+            // Guardar título original de la página para restaurarlo después
+            const originalTitle = document.title;
+            // Cambiar el título de la página principal para que el diálogo de impresión
+            // use el nombre correcto del archivo PDF
+            document.title = pdfTitle;
+
+            // Función de limpieza: restaurar título y eliminar iframe
+            const cleanup = () => {
+                document.title = originalTitle;
+                const iframeEl = document.getElementById('print-iframe-a3');
+                if (iframeEl && iframeEl.parentNode) iframeEl.parentNode.removeChild(iframeEl);
+            };
+
+            // Crear iframe fuera de pantalla (con tamaño real para que renderice)
             const iframe = document.createElement('iframe');
-            iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; overflow:hidden;';
+            iframe.id = 'print-iframe-a3';
+            iframe.style.cssText = 'position:fixed; left:-9999px; top:0; width:420mm; height:297mm; border:0; overflow:hidden;';
             document.body.appendChild(iframe);
 
             const iDoc = iframe.contentDocument || iframe.contentWindow.document;
@@ -3889,45 +3956,61 @@
             iDoc.close();
 
             // Esperar a que cargue el contenido y luego imprimir
+            let printTriggered = false;
             const tryPrint = () => {
+                if (printTriggered) return;
+                printTriggered = true;
                 try {
                     iframe.contentWindow.focus();
                     iframe.contentWindow.print();
                 } catch (e) {
                     // Fallback: si iframe falla (algunos móviles), abrir ventana
-                    document.body.removeChild(iframe);
+                    cleanup();
                     const printWin = window.open('', '_blank');
                     if (printWin) {
                         printWin.document.open();
                         printWin.document.write(printDoc);
                         printWin.document.close();
+                        // Auto-cerrar la ventana tras imprimir
+                        printWin.onafterprint = () => { printWin.close(); };
+                        setTimeout(() => { try { printWin.close(); } catch(ex) {} }, 3000);
                     } else {
                         showNotification('Permite ventanas emergentes para imprimir', 'error');
                     }
                     return;
                 }
-                // Eliminar iframe tras imprimir (1.5s de margen)
-                setTimeout(() => {
-                    if (iframe.parentNode) document.body.removeChild(iframe);
-                }, 1500);
+                // Escuchar evento afterprint para limpiar
+                iframe.contentWindow.onafterprint = cleanup;
+                // Fallback: limpiar tras 3 segundos por si afterprint no dispara
+                setTimeout(cleanup, 3000);
             };
 
-            // Esperar que el iframe cargue (imágenes, fuentes, etc.)
-            if (iframe.contentWindow.document.readyState === 'complete') {
-                setTimeout(tryPrint, 300);
-            } else {
-                iframe.contentWindow.onload = () => setTimeout(tryPrint, 300);
-                // Fallback por si onload no dispara
-                setTimeout(tryPrint, 1000);
-            }
+            // Esperar que el iframe cargue completamente
+            const checkReady = () => {
+                try {
+                    if (iframe.contentWindow && iframe.contentWindow.document && iframe.contentWindow.document.readyState === 'complete') {
+                        setTimeout(tryPrint, 500);
+                    } else {
+                        setTimeout(checkReady, 200);
+                    }
+                } catch (e) {
+                    setTimeout(checkReady, 200);
+                }
+            };
+            // Iniciar comprobación tras un breve retardo inicial
+            setTimeout(checkReady, 300);
+            // Timeout máximo: si tras 5s no se ha impreso, intentar de todas formas
+            setTimeout(tryPrint, 5000);
         };
 
         // Obtener meses seleccionados del selector
         function getSelectedPrintMonths() {
             const chips = document.querySelectorAll('#print-month-selector .print-month-chip');
             const selected = [];
-            chips.forEach((chip, idx) => {
-                if (chip.classList.contains('selected')) selected.push(idx);
+            chips.forEach(chip => {
+                if (chip.classList.contains('selected')) {
+                    selected.push(parseInt(chip.dataset.index, 10));
+                }
             });
             return selected;
         }
