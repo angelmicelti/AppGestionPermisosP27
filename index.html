@@ -3810,6 +3810,14 @@
                 ? `.p-cell{padding-top:2pt;font-size:7.5pt;}.p-num{font-size:7.5pt;}.p-card-header{font-size:10pt;padding:3pt;}.p-day-header{font-size:7pt;padding:1.5pt 0;}.p-dot{width:4.5px;height:4.5px;}.p-dot-more{font-size:6pt;line-height:4.5px;}.p-grid-7{gap:0.4px;}`
                 : `.p-cell{padding-top:1pt;font-size:5.5pt;}.p-num{font-size:5.5pt;}.p-card-header{font-size:7pt;padding:2pt 4pt;}.p-day-header{font-size:5pt;padding:1pt 0;}.p-dot{width:3px;height:3px;}.p-dot-more{font-size:4pt;line-height:3px;}.p-grid-7{gap:0.2px;}`;
 
+            // Área imprimible exacta del A3 con márgenes de 10mm cada lado:
+            //   Portrait : 297mm − 20mm = 277mm ancho  /  420mm − 20mm = 400mm alto
+            //   Landscape: 420mm − 20mm = 400mm ancho  /  297mm − 20mm = 277mm alto
+            // Usamos estas dimensiones absolutas (mm) en lugar de 100vh, que hace
+            // referencia a la pantalla del dispositivo y provoca desbordamiento.
+            const pageH = layout.orientation === 'portrait' ? '400mm' : '277mm';
+            const pageW = layout.orientation === 'portrait' ? '277mm' : '400mm';
+
             const fullHtml = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -3820,20 +3828,29 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 @page{size:A3 ${layout.orientation};margin:10mm;}
 html,body{width:100%;height:100%;background:white;font-family:system-ui,-apple-system,sans-serif;color:#1f2937;}
-#pr{display:flex;flex-direction:column;width:100%;height:100vh;max-height:100vh;padding:5mm;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-.p-title{text-align:center;font-size:16pt;font-weight:bold;margin-bottom:3mm;color:#000;flex-shrink:0;}
-.p-subtitle{text-align:center;font-size:10pt;color:#555;margin-bottom:4mm;flex-shrink:0;}
-.p-legend{display:flex;flex-wrap:wrap;gap:4mm;justify-content:center;margin-bottom:4mm;font-size:7pt;color:#333;-webkit-print-color-adjust:exact;print-color-adjust:exact;flex-shrink:0;}
+/* #pr tiene exactamente las dimensiones del área imprimible del A3.
+   En pantalla se ve como una preview a escala real; al imprimir
+   coincide exactamente con una sola hoja sin desbordamiento. */
+#pr{
+  display:flex;flex-direction:column;
+  width:${pageW};height:${pageH};
+  padding:4mm;
+  overflow:hidden;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
+.p-title{text-align:center;font-size:16pt;font-weight:bold;margin-bottom:2mm;color:#000;flex-shrink:0;}
+.p-subtitle{text-align:center;font-size:10pt;color:#555;margin-bottom:3mm;flex-shrink:0;}
+.p-legend{display:flex;flex-wrap:wrap;gap:3mm;justify-content:center;margin-bottom:3mm;font-size:7pt;color:#333;-webkit-print-color-adjust:exact;print-color-adjust:exact;flex-shrink:0;}
 .p-legend-item{display:flex;align-items:center;gap:2px;}
 .p-legend-color{width:8px;height:8px;border:.5px solid #999;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-.p-grid{flex:1 1 0;display:grid;gap:4mm;align-items:stretch;min-height:0;grid-template-columns:repeat(${layout.cols},1fr);grid-template-rows:repeat(${layout.rows},1fr);}
-.p-grid>div{break-inside:avoid;page-break-inside:avoid;display:flex;flex-direction:column;min-height:0;}
+.p-grid{flex:1 1 0;display:grid;gap:3mm;align-items:stretch;min-height:0;grid-template-columns:repeat(${layout.cols},1fr);grid-template-rows:repeat(${layout.rows},1fr);}
+.p-grid>div{display:flex;flex-direction:column;min-height:0;overflow:hidden;}
 .p-card{flex:1;display:flex;flex-direction:column;border:1px solid #999;border-radius:.375rem;overflow:hidden;min-height:0;}
 .p-card-header{background-color:#2563EB!important;color:white!important;text-align:center;font-weight:bold;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:3pt;flex-shrink:0;}
 .p-day-header{display:grid;grid-template-columns:repeat(7,1fr);background-color:#f3f4f6;text-align:center;font-size:.65rem;color:#6b7280;padding:2px 0;border-top:1px solid #e5e7eb;-webkit-print-color-adjust:exact;print-color-adjust:exact;flex-shrink:0;}
-.p-grid-7{display:grid;grid-template-columns:repeat(7,1fr);flex:1;grid-auto-rows:1fr;gap:1px;background-color:#e5e7eb;border-top:1px solid #e5e7eb;min-height:0;}
+.p-grid-7{display:grid;grid-template-columns:repeat(7,1fr);flex:1;grid-auto-rows:1fr;gap:1px;background-color:#e5e7eb;border-top:1px solid #e5e7eb;min-height:0;overflow:hidden;}
 .p-empty{background-color:#f9fafb;}
-.p-cell{background-color:white;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:2px;}
+.p-cell{background-color:white;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:2px;overflow:hidden;}
 .p-num{font-weight:500;}
 .p-num-wk{color:#dc2626;opacity:.5;}
 .p-num-loc{color:#7e22ce;font-weight:bold;}
@@ -3853,6 +3870,7 @@ html,body{width:100%;height:100%;background:white;font-family:system-ui,-apple-s
 .p-dot-dark{background-color:#374151!important;}
 .p-dot-sec{background-color:#6B7280!important;}
 .p-dot-more{font-size:7px;line-height:5px;font-weight:bold;color:#6b7280;}
+.p-footer{text-align:center;font-size:7pt;color:#555;margin-top:3mm;flex-shrink:0;font-style:italic;border-top:0.5px solid #ccc;padding-top:2mm;}
 ${sizeCSS}
 </style>
 </head>
@@ -3864,10 +3882,10 @@ ${legendHtml}
 <div class="p-grid">
 ${monthsHtml}
 <\/div>
+<div class="p-footer">&#9432;&nbsp; No olvides que para solicitar el permiso P27 necesitas al menos 15 d\u00edas h\u00e1biles de antelaci\u00f3n<\/div>
 <\/div>
 <script>
 window.onload = function() {
-    // Pequeño retardo para que el CSS se aplique antes de abrir el diálogo
     setTimeout(function() { window.print(); }, 400);
 };
 <\/script>
