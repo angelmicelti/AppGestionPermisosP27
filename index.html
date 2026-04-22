@@ -3784,61 +3784,59 @@
                 <\/div>`;
 
             // ===================================================================
-            // ESTRATEGIA CROSS-PLATFORM (PC + Android + iOS)
+            // ESTRATEGIA: ventana nueva con blob URL
             // ===================================================================
-            // Problemas del enfoque blob anterior en móvil:
+            // En lugar de manipular el DOM de la página principal (overlay +
+            // document.title + cleanup), abrimos una ventana nueva cuyo HTML
+            // contiene el <title> correcto fijo y solo los meses seleccionados.
             //
-            //  a) iOS Safari a veces no dispara window.onload en ventanas con
-            //     blob URL → window.print() nunca se llama.
-            //  b) El motor de impresión móvil renderiza la página al ANCHO DEL
-            //     VIEWPORT (ej. 390px iPhone), no al ancho del papel. Si el
-            //     viewport es estrecho, el flex-layout se rompe antes de imprimir
-            //     y el encabezado acaba en la pág.1 y los meses en la pág.2.
-            //
-            // Soluciones:
-            //
-            //  1. window.open('','_blank') + document.write()
-            //     → Más compatible que blob URL en todos los navegadores móviles
-            //       cuando se llama desde un click de usuario (no bloqueado).
-            //
-            //  2. Viewport = ancho imprimible A3 en px CSS (96dpi)
-            //     · A3 portrait  = 297mm − 20mm márgenes = 277mm ≈ 1047px
-            //     · A3 landscape = 420mm − 20mm márgenes = 400mm ≈ 1512px
-            //     → El navegador renderiza a ese ancho → el flex no se rompe.
-            //
-            //  3. html,body,#pr con height:100%
-            //     → En contexto de impresión, 100% se resuelve al alto del área
-            //       imprimible (papel − márgenes @page), no al alto del viewport.
-            //       Esto garantiza exactamente 1 página sin desbordamiento.
-            //
-            //  4. Script de arranque robusto (readyState + load + fallback)
-            //     → Funciona independientemente del momento en que iOS/Android
-            //       dispare los eventos de carga.
+            // Ventajas:
+            //  - Bug 1 (nomenclatura): el <title> está en el HTML del blob, no
+            //    depende de document.title de la página principal ni de cuándo
+            //    afterprint/focus lo restauren.
+            //  - Bug 2 (meses duplicados): la ventana nueva no tiene el CSS
+            //    heredado de la página principal (#view-calendar, body>*, etc.),
+            //    por lo que nunca puede aparecer contenido no deseado al cambiar
+            //    el tamaño de papel en el diálogo de impresión.
+            //  - Bug 3 (páginas): height:100vh en CSS normal (no @media print)
+            //    funciona de forma fiable en todos los navegadores móviles.
             // ===================================================================
 
-            // Ancho del viewport = área imprimible A3 en píxeles CSS (96 dpi)
-            // 1 mm = 3.7795 px a 96 dpi
-            const vpWidth = layout.orientation === 'portrait' ? 1047 : 1512;
+            const sizeCSS = sizeLevel === 'xl'
+                ? `.p-cell{padding-top:5pt;font-size:15pt;}.p-num{font-size:15pt;}.p-card-header{font-size:19pt;padding:7pt;}.p-day-header{font-size:14pt;padding:4pt 0;}.p-dot{width:9px;height:9px;}.p-dot-more{font-size:9px;line-height:9px;}.p-grid-7{gap:1.2px;}`
+                : sizeLevel === 'lg'
+                ? `.p-cell{padding-top:3pt;font-size:10pt;}.p-num{font-size:10pt;}.p-card-header{font-size:13pt;padding:5pt;}.p-day-header{font-size:9pt;padding:3pt 0;}.p-dot{width:6px;height:6px;}.p-dot-more{font-size:8px;line-height:6px;}.p-grid-7{gap:0.7px;}`
+                : sizeLevel === 'md'
+                ? `.p-cell{padding-top:2pt;font-size:7.5pt;}.p-num{font-size:7.5pt;}.p-card-header{font-size:10pt;padding:3pt;}.p-day-header{font-size:7pt;padding:1.5pt 0;}.p-dot{width:4.5px;height:4.5px;}.p-dot-more{font-size:6pt;line-height:4.5px;}.p-grid-7{gap:0.4px;}`
+                : `.p-cell{padding-top:1pt;font-size:5.5pt;}.p-num{font-size:5.5pt;}.p-card-header{font-size:7pt;padding:2pt 4pt;}.p-day-header{font-size:5pt;padding:1pt 0;}.p-dot{width:3px;height:3px;}.p-dot-more{font-size:4pt;line-height:3px;}.p-grid-7{gap:0.2px;}`;
+
+            // Área imprimible exacta del A3 con márgenes de 10mm cada lado:
+            //   Portrait : 297mm − 20mm = 277mm ancho  /  420mm − 20mm = 400mm alto
+            //   Landscape: 420mm − 20mm = 400mm ancho  /  297mm − 20mm = 277mm alto
+            // Usamos estas dimensiones absolutas (mm) en lugar de 100vh, que hace
+            // referencia a la pantalla del dispositivo y provoca desbordamiento.
+            const pageH = layout.orientation === 'portrait' ? '400mm' : '277mm';
+            const pageW = layout.orientation === 'portrait' ? '277mm' : '400mm';
 
             const fullHtml = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=${vpWidth}, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>${pdfTitle}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 @page{size:A3 ${layout.orientation};margin:10mm;}
 html,body{width:100%;height:100%;background:white;font-family:system-ui,-apple-system,sans-serif;color:#1f2937;}
+/* #pr tiene exactamente las dimensiones del área imprimible del A3.
+   En pantalla se ve como una preview a escala real; al imprimir
+   coincide exactamente con una sola hoja sin desbordamiento. */
 #pr{
   display:flex;flex-direction:column;
-  width:100%;height:100%;
+  width:${pageW};height:${pageH};
   padding:4mm;
+  overflow:hidden;
   -webkit-print-color-adjust:exact;print-color-adjust:exact;
-}
-@media print{
-  html,body{margin:0;padding:0;}
-  #pr{overflow:hidden;page-break-inside:avoid;break-inside:avoid;}
 }
 .p-title{text-align:center;font-size:16pt;font-weight:bold;margin-bottom:2mm;color:#000;flex-shrink:0;}
 .p-subtitle{text-align:center;font-size:10pt;color:#555;margin-bottom:3mm;flex-shrink:0;}
@@ -3887,45 +3885,27 @@ ${monthsHtml}
 <div class="p-footer">&#9432;&nbsp; No olvides que para solicitar el permiso P27 necesitas al menos 15 d\u00edas h\u00e1biles de antelaci\u00f3n<\/div>
 <\/div>
 <script>
-// Script de arranque robusto: cubre todos los estados posibles de carga
-// en iOS Safari, Android Chrome y navegadores de escritorio.
-(function(){
-  function doPrint(){
-    // window.focus() necesario en algunos navegadores para que
-    // el diálogo de impresión aparezca sobre la ventana principal
-    try{ window.focus(); } catch(e){}
-    window.print();
-  }
-  // Si el documento ya está listo (habitual con document.write), imprimir
-  // tras un pequeño retardo para que el CSS se aplique completamente.
-  // Si no, esperar al evento load (iOS Safari a veces llega tarde).
-  if(document.readyState==='complete'||document.readyState==='interactive'){
-    setTimeout(doPrint, 350);
-  } else {
-    window.addEventListener('load', function(){ setTimeout(doPrint, 350); }, {once:true});
-    // Fallback por si load no se dispara (iOS quirk): 1.5 s
-    setTimeout(function(){
-      if(document.readyState!=='complete') doPrint();
-    }, 1500);
-  }
-})();
+window.onload = function() {
+    setTimeout(function() { window.print(); }, 400);
+};
 <\/script>
 <\/body>
 <\/html>`;
 
-            // Abrir ventana nueva y escribir HTML directamente con document.write.
-            // Más compatible en iOS/Android que blob URL:
-            //  · No requiere soporte de blob en el contexto de ventana nueva
-            //  · El parser HTML síncrono de document.write garantiza que el DOM
-            //    esté disponible antes de que se evalúe el <script> inline
-            const printWin = window.open('', '_blank');
+            // Crear blob URL y abrir en ventana nueva.
+            // Como se llama desde un click del usuario, los bloqueadores de popups
+            // no deberían interferir en ningún navegador moderno.
+            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+            const blobUrl = URL.createObjectURL(blob);
+            const printWin = window.open(blobUrl, '_blank');
+
             if (!printWin) {
-                showNotification('El navegador bloqueó la ventana de impresión. Activa las ventanas emergentes para esta página e inténtalo de nuevo.', 'error');
-                return;
+                showNotification('El navegador bloqueó la ventana de impresión. Permite las ventanas emergentes para esta página y vuelve a intentarlo.', 'error');
             }
-            printWin.document.open('text/html', 'replace');
-            printWin.document.write(fullHtml);
-            printWin.document.close();
+
+            // Liberar memoria del blob tras 10 minutos (tiempo más que suficiente
+            // para que el navegador haya cargado el contenido de la URL).
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 600000);
         };
 
         // Obtener meses seleccionados del selector
