@@ -3677,15 +3677,15 @@
             return 'sm';
         }
 
-        // Función para imprimir el calendario en A3 con layout automático
+        // Función para imprimir el calendario en A3.
+        // Genera una página HTML autocontenida como Blob URL y la abre en ventana nueva,
+        // lo que garantiza el mismo comportamiento en móvil y escritorio.
         window.app.printCalendar = () => {
-            // Si está cargando, no permitir imprimir
             if (window.app.isLoadingFromGitHub) {
                 showNotification('Espera a que termine la carga desde GitHub', 'info');
                 return;
             }
 
-            // Obtener meses seleccionados
             const selectedMonths = getSelectedPrintMonths();
             if (selectedMonths.length === 0) {
                 showNotification('Selecciona al menos un mes para imprimir', 'error');
@@ -3693,66 +3693,150 @@
             }
 
             const y = window.app.config.startYear;
-            const mNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-            const allMonths = [ {y,m:8},{y,m:9},{y,m:10},{y,m:11},{y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5} ];
+            const mNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
+                            "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+            const allMonths = [
+                {y,m:8},{y,m:9},{y,m:10},{y,m:11},
+                {y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5}
+            ];
+            const months = selectedMonths.map(i => allMonths[i]);
+            const n = months.length;
 
-            // Actualizar título
-            const titleEl = document.getElementById('print-cal-title');
-            if (titleEl) {
-                titleEl.textContent = `Calendario de Asuntos Propios - Curso ${y}/${y + 1}`;
-            }
-
-            // Actualizar subtítulo con los meses seleccionados
-            const subtitleEl = document.getElementById('print-cal-subtitle');
-            if (subtitleEl) {
-                if (selectedMonths.length === allMonths.length) {
-                    subtitleEl.textContent = 'Curso completo (Septiembre - Junio)';
-                } else {
-                    const names = selectedMonths.map(idx => mNames[allMonths[idx].m]);
-                    subtitleEl.textContent = names.join(' | ');
-                }
-            }
-
-            // Renderizar solo los meses seleccionados
-            renderCalendar(selectedMonths);
-
-            // Calcular mejor layout automático
-            const n = selectedMonths.length;
             const layout = findBestPrintLayout(n);
             const sizeLevel = getSizeLevel(layout.month_w);
 
-            // Aplicar orientación dinámica en @page
-            document.getElementById('print-page-style').textContent =
-                `@media print { @page { size: A3 ${layout.orientation}; margin: 10mm; } }`;
+            const subtitle = (selectedMonths.length === allMonths.length)
+                ? 'Curso completo (Septiembre - Junio)'
+                : months.map(item => mNames[item.m] + ' ' + item.y).join(' | ');
 
-            // Aplicar clases de layout y tamaño al grid
-            const grid = document.getElementById('calendar-grid');
-            grid.classList.remove('print-layout', 'print-size-xl', 'print-size-lg', 'print-size-md', 'print-size-sm');
-            grid.classList.add('print-layout', `print-size-${sizeLevel}`);
-            grid.style.gridTemplateColumns = `repeat(${layout.cols}, 1fr)`;
-            grid.style.gap = '4mm';
-
-            // Nombre del archivo PDF con meses abreviados
-            const shortNames = ['Se', 'Oc', 'No', 'Di', 'En', 'Fe', 'Mr', 'Ab', 'My', 'Ju'];
-            const abbrMonths = selectedMonths.map(idx => shortNames[idx]).join('');
-            const shortYear = String(y).slice(-2);
-            const originalTitle = document.title;
-            document.title = `PermisosP${shortYear}_${abbrMonths}_${y + 1}.pdf`;
-
-            // Abrir diálogo de impresión y restaurar al terminar
-            const restoreCalendar = () => {
-                grid.classList.remove('print-layout', 'print-size-xl', 'print-size-lg', 'print-size-md', 'print-size-sm');
-                grid.style.gridTemplateColumns = '';
-                grid.style.gap = '';
-                document.getElementById('print-page-style').textContent =
-                    '@media print { @page { size: A3 landscape; margin: 10mm; } }';
-                document.title = originalTitle;
-                renderCalendar();
-                window.removeEventListener('afterprint', restoreCalendar);
+            const fontSizes = {
+                xl: { cell:'15pt', header:'19pt', week:'11pt', dot:'5px', extra:'9pt' },
+                lg: { cell:'11pt', header:'14pt', week:'8pt',  dot:'5px', extra:'7pt' },
+                md: { cell:'8pt',  header:'10pt', week:'6pt',  dot:'4px', extra:'6pt' },
+                sm: { cell:'6pt',  header:'8pt',  week:'5pt',  dot:'3px', extra:'5pt' }
             };
-            window.addEventListener('afterprint', restoreCalendar);
+            const fs = fontSizes[sizeLevel] || fontSizes.md;
 
-            window.print();
+            // Genera el HTML de un mes completo
+            function buildMonthHtml(item) {
+                const dim = new Date(item.y, item.m + 1, 0).getDate();
+                const off = (new Date(item.y, item.m, 1).getDay() + 6) % 7;
+                let h = '<div class="month-card">';
+                h += '<div class="card-header">' + mNames[item.m] + ' ' + item.y + '</div>';
+                h += '<div class="weekdays"><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>';
+                h += '<div class="cal-grid">';
+                for (let i = 0; i < off; i++) h += '<div class="empty-cell"></div>';
+                for (let d = 1; d <= dim; d++) {
+                    const ds = item.y + '-' + String(item.m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+                    const day = new Date(item.y, item.m, d).getDay();
+                    const isW = day === 0 || day === 6;
+                    const isL = window.app.config.localHolidays.includes(ds);
+                    const isP = window.app.config.provHolidays.includes(ds);
+                    const isU = (window.app.config.unavailableDays || []).includes(ds);
+                    const isN = (window.app.config.nonTeachingDays || []).includes(ds);
+                    const reqs = window.app.requests.filter(r => r.date === ds);
+                    let cc = 'cal-cell', nc = 'day-num';
+                    if      (isW) { cc += ' c-we';   nc += ' n-we';   }
+                    else if (isL) { cc += ' c-loc';  nc += ' n-loc';  }
+                    else if (isP) { cc += ' c-prov'; nc += ' n-prov'; }
+                    else if (isU) { cc += ' c-unav'; nc += ' n-unav'; }
+                    else if (isN) { cc += ' c-nt';   nc += ' n-nt';   }
+                    if (reqs.length > 0) cc += ' c-act';
+                    h += '<div class="' + cc + '"><span class="' + nc + '">' + d + '</span>';
+                    if (reqs.length > 0) {
+                        h += '<div class="dots">';
+                        const max = 3, display = reqs.length > max ? max - 1 : reqs.length;
+                        for (let i = 0; i < display; i++) {
+                            const t = reqs[i].type;
+                            const dc = t==='paid_teaching' ? 'dp' : t==='paid_non_teaching' ? 'dw' : t==='unpaid' ? 'dd' : 'ds';
+                            h += '<div class="dot ' + dc + '"></div>';
+                        }
+                        if (reqs.length > max) h += '<span class="extra">+' + (reqs.length-(max-1)) + '</span>';
+                        h += '</div>';
+                    }
+                    h += '</div>';
+                }
+                h += '</div></div>';
+                return h;
+            }
+
+            const monthsHtml = months.map(buildMonthHtml).join('');
+
+            const shortNames = ['Se','Oc','No','Di','En','Fe','Mr','Ab','My','Ju'];
+            const abbrMonths = selectedMonths.map(i => shortNames[i]).join('');
+            const docTitle = 'PermisosP' + String(y).slice(-2) + '_' + abbrMonths + '_' + (y+1) + '.pdf';
+
+            // Construir el HTML final como string (sin literales de cierre de etiqueta)
+            const css = [
+                '@page{size:A3 ' + layout.orientation + ';margin:10mm}',
+                '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}',
+                'html,body{width:100%;height:100%;font-family:system-ui,-apple-system,sans-serif}',
+                'body{display:flex;flex-direction:column;height:100vh}',
+                'h1{text-align:center;font-size:16pt;font-weight:bold;margin-bottom:3mm;flex-shrink:0}',
+                '.sub{text-align:center;font-size:10pt;color:#555;margin-bottom:3mm;flex-shrink:0}',
+                '.legend{display:flex;flex-wrap:wrap;gap:3mm 5mm;justify-content:center;margin-bottom:3mm;font-size:7pt;color:#333;flex-shrink:0}',
+                '.legend-item{display:flex;align-items:center;gap:2px}',
+                '.lc{width:9px;height:9px;border:.5px solid #999;display:inline-block}',
+                '.ld{width:9px;height:9px;border-radius:50%;display:inline-block;border:.5px solid rgba(0,0,0,.2)}',
+                '#grid{display:grid;grid-template-columns:repeat(' + layout.cols + ',1fr);gap:4mm;flex:1 1 0;min-height:0;align-items:stretch}',
+                '.month-card{display:flex;flex-direction:column;border:1px solid #d1d5db;border-radius:3px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}',
+                '.card-header{background-color:#2563EB!important;color:#fff;text-align:center;font-weight:bold;font-size:' + fs.header + ';padding:3pt 2pt;flex-shrink:0}',
+                '.weekdays{display:grid;grid-template-columns:repeat(7,1fr);background:#f3f4f6!important;border-top:1px solid #e5e7eb;flex-shrink:0}',
+                '.weekdays div{text-align:center;font-size:' + fs.week + ';padding:1pt 0;color:#4b5563}',
+                '.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;flex:1 1 0}',
+                '.cal-cell,.empty-cell{border:.5px solid #e5e7eb}',
+                '.cal-cell{background:#fff!important;display:flex;flex-direction:column;align-items:center;padding-top:1pt}',
+                '.empty-cell{background:#f9fafb!important}',
+                '.day-num{font-size:' + fs.cell + ';font-weight:500;line-height:1.1}',
+                '.n-we{color:#dc2626;opacity:.5}.n-loc{color:#7e22ce;font-weight:bold}',
+                '.n-prov{color:#c2410c;font-weight:bold}.n-unav{color:#374151;font-weight:bold}.n-nt{color:#a16207;font-weight:bold}',
+                '.c-we{background-color:#e0e0e0!important}.c-loc{background-color:#e8d5f5!important}',
+                '.c-prov{background-color:#fde2c8!important}.c-unav{background-color:#e8e8e8!important}.c-nt{background-color:#fdf5c8!important}',
+                '.c-act{box-shadow:inset 0 0 0 1.5pt #3B82F6}',
+                '.dots{display:flex;gap:1px;flex-wrap:wrap;justify-content:center;width:100%;padding:0 1px;margin-top:1px}',
+                '.dot{width:' + fs.dot + ';height:' + fs.dot + ';border-radius:50%;border:.5px solid rgba(0,0,0,.15);flex-shrink:0}',
+                '.dp{background-color:#3B82F6!important}.dw{background-color:#F59E0B!important}',
+                '.dd{background-color:#374151!important}.ds{background-color:#6B7280!important}',
+                '.extra{font-size:' + fs.extra + ';font-weight:bold;color:#6b7280;line-height:' + fs.dot + '}',
+                '.footer{text-align:center;font-size:7pt;color:#555;margin-top:3mm;flex-shrink:0;font-style:italic}'
+            ].join('\n');
+
+            const legend = [
+                '<div class="legend-item"><span class="lc" style="background:#e8d5f5"></span> Festivo local</div>',
+                '<div class="legend-item"><span class="lc" style="background:#fde2c8"></span> Festivo prov.</div>',
+                '<div class="legend-item"><span class="lc" style="background:#e0e0e0"></span> Fin de semana</div>',
+                '<div class="legend-item"><span class="lc" style="background:#fdf5c8"></span> No lectivo</div>',
+                '<div class="legend-item"><span class="lc" style="background:#e8e8e8"></span> No disponible</div>',
+                '<div class="legend-item"><span class="ld dp"></span> Retr. Lectivo</div>',
+                '<div class="legend-item"><span class="ld dw"></span> Retr. No Lect.</div>',
+                '<div class="legend-item"><span class="ld dd"></span> No Retribuido</div>'
+            ].join('');
+
+            // El script de auto-impresión se construye evitando literales de cierre
+            const autoprint = 'window.onload=function(){window.print();window.addEventListener("afterprint",function(){window.close();});};';
+
+            const html = '<!DOCTYPE html>' +
+                '<html lang="es"><head>' +
+                '<meta charset="UTF-8">' +
+                '<title>' + docTitle + '</title>' +
+                '<style>' + css + '<\/style>' +
+                '</head><body>' +
+                '<h1>Calendario de Asuntos Propios &mdash; Curso ' + y + '/' + (y+1) + '</h1>' +
+                '<p class="sub">' + subtitle + '</p>' +
+                '<div class="legend">' + legend + '</div>' +
+                '<div id="grid">' + monthsHtml + '</div>' +
+                '<p class="footer">&#9432; No olvides que tienes que solicitar el permiso con 15 d&iacute;as h&aacute;biles de antelaci&oacute;n</p>' +
+                '<script>' + autoprint + '<\/script>' +
+                '</body></html>';
+
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const pw = window.open(url, '_blank');
+            if (!pw) {
+                showNotification('Permite los popups para esta página y vuelve a intentarlo.', 'error');
+            }
+            // Liberar el objeto URL tras un tiempo prudencial
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
         };
 
         // Obtener meses seleccionados del selector
