@@ -272,11 +272,6 @@
                 display: none !important;
             }
 
-            /* Ocultar meses no seleccionados para impresión */
-            .print-month-hidden {
-                display: none !important;
-            }
-
             /* Título del calendario al imprimir */
             .print-calendar-title {
                 display: block !important;
@@ -310,7 +305,6 @@
             /* --- Cadena de estiramiento vertical (flex → flex → grid) --- */
             #calendar-grid.print-layout {
                 display: grid !important;
-                grid-template-columns: repeat(var(--print-cols, 2), 1fr) !important;
                 flex: 1 1 0 !important;
                 min-height: 0 !important;
                 width: 100% !important;
@@ -3683,11 +3677,9 @@
             return 'sm';
         }
 
-        // Función para imprimir el calendario.
-        // Usa window.print() directamente sobre la página principal,
-        // aprovechando el CSS @media print ya existente (líneas 250-468).
-        // Este es el método MÁS compatible en TODOS los navegadores y dispositivos:
-        // no requiere popups, iframes, ni Blob URLs.
+        // Función para imprimir el calendario en A3.
+        // Genera una página HTML autocontenida como Blob URL y la abre en ventana nueva,
+        // lo que garantiza el mismo comportamiento en móvil y escritorio.
         window.app.printCalendar = () => {
             if (window.app.isLoadingFromGitHub) {
                 showNotification('Espera a que termine la carga desde GitHub', 'info');
@@ -3707,81 +3699,157 @@
                 {y,m:8},{y,m:9},{y,m:10},{y,m:11},
                 {y:y+1,m:0},{y:y+1,m:1},{y:y+1,m:2},{y:y+1,m:3},{y:y+1,m:4},{y:y+1,m:5}
             ];
-            const n = selectedMonths.length;
-            const selectedSet = new Set(selectedMonths);
+            const months = selectedMonths.map(i => allMonths[i]);
+            const n = months.length;
 
-            // Calcular layout óptimo para A3
             const layout = findBestPrintLayout(n);
-            if (!layout) {
-                showNotification('No se pudo calcular el layout para ' + n + ' meses', 'error');
-                return;
-            }
             const sizeLevel = getSizeLevel(layout.month_w);
 
-            // Subtítulo para la cabecera impresa
-            const months = selectedMonths.map(i => allMonths[i]);
-            const subtitle = (n === allMonths.length)
+            const subtitle = (selectedMonths.length === allMonths.length)
                 ? 'Curso completo (Septiembre - Junio)'
                 : months.map(item => mNames[item.m] + ' ' + item.y).join(' | ');
 
-            // === PASO 1: Preparar el DOM para impresión ===
+            const fontSizes = {
+                xl: { cell:'15pt', header:'19pt', week:'11pt', dot:'5px', extra:'9pt' },
+                lg: { cell:'11pt', header:'14pt', week:'8pt',  dot:'5px', extra:'7pt' },
+                md: { cell:'8pt',  header:'10pt', week:'6pt',  dot:'4px', extra:'6pt' },
+                sm: { cell:'6pt',  header:'8pt',  week:'5pt',  dot:'3px', extra:'5pt' }
+            };
+            const fs = fontSizes[sizeLevel] || fontSizes.md;
 
-            const grid = document.getElementById('calendar-grid');
-            const monthCards = grid.children;
-            const printTitle = document.getElementById('print-cal-title');
-            const printSubtitle = document.getElementById('print-cal-subtitle');
-
-            // 1a. Ocultar meses NO seleccionados
-            for (let i = 0; i < monthCards.length; i++) {
-                if (!selectedSet.has(i)) {
-                    monthCards[i].classList.add('print-month-hidden');
+            // Genera el HTML de un mes completo
+            function buildMonthHtml(item) {
+                const dim = new Date(item.y, item.m + 1, 0).getDate();
+                const off = (new Date(item.y, item.m, 1).getDay() + 6) % 7;
+                let h = '<div class="month-card">';
+                h += '<div class="card-header">' + mNames[item.m] + ' ' + item.y + '</div>';
+                h += '<div class="weekdays"><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>';
+                h += '<div class="cal-grid">';
+                for (let i = 0; i < off; i++) h += '<div class="empty-cell"></div>';
+                for (let d = 1; d <= dim; d++) {
+                    const ds = item.y + '-' + String(item.m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+                    const day = new Date(item.y, item.m, d).getDay();
+                    const isW = day === 0 || day === 6;
+                    const isL = window.app.config.localHolidays.includes(ds);
+                    const isP = window.app.config.provHolidays.includes(ds);
+                    const isU = (window.app.config.unavailableDays || []).includes(ds);
+                    const isN = (window.app.config.nonTeachingDays || []).includes(ds);
+                    const reqs = window.app.requests.filter(r => r.date === ds);
+                    let cc = 'cal-cell', nc = 'day-num';
+                    if      (isW) { cc += ' c-we';   nc += ' n-we';   }
+                    else if (isL) { cc += ' c-loc';  nc += ' n-loc';  }
+                    else if (isP) { cc += ' c-prov'; nc += ' n-prov'; }
+                    else if (isU) { cc += ' c-unav'; nc += ' n-unav'; }
+                    else if (isN) { cc += ' c-nt';   nc += ' n-nt';   }
+                    if (reqs.length > 0) cc += ' c-act';
+                    h += '<div class="' + cc + '"><span class="' + nc + '">' + d + '</span>';
+                    if (reqs.length > 0) {
+                        h += '<div class="dots">';
+                        const max = 3, display = reqs.length > max ? max - 1 : reqs.length;
+                        for (let i = 0; i < display; i++) {
+                            const t = reqs[i].type;
+                            const dc = t==='paid_teaching' ? 'dp' : t==='paid_non_teaching' ? 'dw' : t==='unpaid' ? 'dd' : 'ds';
+                            h += '<div class="dot ' + dc + '"></div>';
+                        }
+                        if (reqs.length > max) h += '<span class="extra">+' + (reqs.length-(max-1)) + '</span>';
+                        h += '</div>';
+                    }
+                    h += '</div>';
                 }
+                h += '</div></div>';
+                return h;
             }
 
-            // 1b. Aplicar clases de layout de impresión
-            grid.classList.add('print-layout');
-            grid.classList.add('print-size-' + sizeLevel);
-            grid.style.setProperty('--print-cols', String(layout.cols));
+            const monthsHtml = months.map(buildMonthHtml).join('');
 
-            // 1c. Actualizar @page con tamaño y orientación
-            const pageStyle = document.getElementById('print-page-style');
-            pageStyle.textContent = '@media print { @page { size: A3 ' + layout.orientation + '; margin: 10mm; } }';
+            const shortNames = ['Se','Oc','No','Di','En','Fe','Mr','Ab','My','Ju'];
+            const abbrMonths = selectedMonths.map(i => shortNames[i]).join('');
+            const docTitle = 'PermisosP' + String(y).slice(-2) + '_' + abbrMonths + '_' + (y+1) + '.pdf';
 
-            // 1d. Establecer subtítulo de impresión
-            printSubtitle.textContent = subtitle;
+            // Construir el HTML final como string (sin literales de cierre de etiqueta)
+            const css = [
+                '@page{size:A3 ' + layout.orientation + ';margin:10mm}',
+                '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}',
+                'html,body{width:100%;height:100%;font-family:system-ui,-apple-system,sans-serif}',
+                'body{display:flex;flex-direction:column;height:100vh}',
+                'h1{text-align:center;font-size:16pt;font-weight:bold;margin-bottom:3mm;flex-shrink:0}',
+                '.sub{text-align:center;font-size:10pt;color:#555;margin-bottom:3mm;flex-shrink:0}',
+                '.legend{display:flex;flex-wrap:wrap;gap:3mm 5mm;justify-content:center;margin-bottom:3mm;font-size:7pt;color:#333;flex-shrink:0}',
+                '.legend-item{display:flex;align-items:center;gap:2px}',
+                '.lc{width:9px;height:9px;border:.5px solid #999;display:inline-block}',
+                '.ld{width:9px;height:9px;border-radius:50%;display:inline-block;border:.5px solid rgba(0,0,0,.2)}',
+                '#grid{display:grid;grid-template-columns:repeat(' + layout.cols + ',1fr);gap:4mm;flex:1 1 0;min-height:0;align-items:stretch}',
+                '.month-card{display:flex;flex-direction:column;border:1px solid #d1d5db;border-radius:3px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}',
+                '.card-header{background-color:#2563EB!important;color:#fff;text-align:center;font-weight:bold;font-size:' + fs.header + ';padding:3pt 2pt;flex-shrink:0}',
+                '.weekdays{display:grid;grid-template-columns:repeat(7,1fr);background:#f3f4f6!important;border-top:1px solid #e5e7eb;flex-shrink:0}',
+                '.weekdays div{text-align:center;font-size:' + fs.week + ';padding:1pt 0;color:#4b5563}',
+                '.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;flex:1 1 0}',
+                '.cal-cell,.empty-cell{border:.5px solid #e5e7eb}',
+                '.cal-cell{background:#fff!important;display:flex;flex-direction:column;align-items:center;padding-top:1pt}',
+                '.empty-cell{background:#f9fafb!important}',
+                '.day-num{font-size:' + fs.cell + ';font-weight:500;line-height:1.1}',
+                '.n-we{color:#dc2626;opacity:.5}.n-loc{color:#7e22ce;font-weight:bold}',
+                '.n-prov{color:#c2410c;font-weight:bold}.n-unav{color:#374151;font-weight:bold}.n-nt{color:#a16207;font-weight:bold}',
+                '.c-we{background-color:#e0e0e0!important}.c-loc{background-color:#e8d5f5!important}',
+                '.c-prov{background-color:#fde2c8!important}.c-unav{background-color:#e8e8e8!important}.c-nt{background-color:#fdf5c8!important}',
+                '.c-act{box-shadow:inset 0 0 0 1.5pt #3B82F6}',
+                '.dots{display:flex;gap:1px;flex-wrap:wrap;justify-content:center;width:100%;padding:0 1px;margin-top:1px}',
+                '.dot{width:' + fs.dot + ';height:' + fs.dot + ';border-radius:50%;border:.5px solid rgba(0,0,0,.15);flex-shrink:0}',
+                '.dp{background-color:#3B82F6!important}.dw{background-color:#F59E0B!important}',
+                '.dd{background-color:#374151!important}.ds{background-color:#6B7280!important}',
+                '.extra{font-size:' + fs.extra + ';font-weight:bold;color:#6b7280;line-height:' + fs.dot + '}',
+                '.footer{text-align:center;font-size:7pt;color:#555;margin-top:3mm;flex-shrink:0;font-style:italic}'
+            ].join('\n');
 
-            // === PASO 2: Función de restauración (después de imprimir) ===
-            let restored = false;
-            function restoreAfterPrint() {
-                if (restored) return;
-                restored = true;
-                window.removeEventListener('afterprint', restoreAfterPrint);
+            const legend = [
+                '<div class="legend-item"><span class="lc" style="background:#e8d5f5"></span> Festivo local</div>',
+                '<div class="legend-item"><span class="lc" style="background:#fde2c8"></span> Festivo prov.</div>',
+                '<div class="legend-item"><span class="lc" style="background:#e0e0e0"></span> Fin de semana</div>',
+                '<div class="legend-item"><span class="lc" style="background:#fdf5c8"></span> No lectivo</div>',
+                '<div class="legend-item"><span class="lc" style="background:#e8e8e8"></span> No disponible</div>',
+                '<div class="legend-item"><span class="ld dp"></span> Retr. Lectivo</div>',
+                '<div class="legend-item"><span class="ld dw"></span> Retr. No Lect.</div>',
+                '<div class="legend-item"><span class="ld dd"></span> No Retribuido</div>'
+            ].join('');
 
-                // Restaurar meses ocultos
-                for (let i = 0; i < monthCards.length; i++) {
-                    monthCards[i].classList.remove('print-month-hidden');
+            // El script de auto-impresión se construye evitando literales de cierre
+            const autoprint = '';
+
+            const html = '<!DOCTYPE html>' +
+                '<html lang="es"><head>' +
+                '<meta charset="UTF-8">' +
+                '<title>' + docTitle + '</title>' +
+                '<style>' + css + '<\/style>' +
+                '</head><body>' +
+                '<h1>Calendario de Asuntos Propios &mdash; Curso ' + y + '/' + (y+1) + '</h1>' +
+                '<p class="sub">' + subtitle + '</p>' +
+                '<div class="legend">' + legend + '</div>' +
+                '<div id="grid">' + monthsHtml + '</div>' +
+                '<p class="footer">&#9432; No olvides que tienes que solicitar el permiso con 15 d&iacute;as h&aacute;biles de antelaci&oacute;n</p>' +
+                '<script>' + autoprint + '<\/script>' +
+                '</body></html>';
+
+            // Usar iframe oculto en la propia página: compatible con móvil sin popups ni Blob URLs
+            let iframe = document.getElementById('_print_iframe');
+            if (iframe) iframe.remove();
+            iframe = document.createElement('iframe');
+            iframe.id = '_print_iframe';
+            iframe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;border:0;visibility:hidden;';
+            document.body.appendChild(iframe);
+
+            const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iDoc.open();
+            iDoc.write(html);
+            iDoc.close();
+
+            iframe.contentWindow.onload = function() {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch(e) {
+                    showNotification('Error al imprimir: ' + e.message, 'error');
                 }
-
-                // Quitar clases de layout
-                grid.classList.remove('print-layout');
-                grid.classList.remove('print-size-xl', 'print-size-lg', 'print-size-md', 'print-size-sm');
-                grid.style.removeProperty('--print-cols');
-
-                // Restaurar @page por defecto
-                pageStyle.textContent = '@media print { @page { size: A3 landscape; margin: 10mm; } }';
-
-                // Limpiar subtítulo
-                printSubtitle.textContent = '';
-            }
-
-            window.addEventListener('afterprint', restoreAfterPrint);
-
-            // === PASO 3: Llamar a window.print() ===
-            window.print();
-
-            // Seguridad: si afterprint no se dispara (algunos móviles),
-            // restaurar tras 5 segundos
-            setTimeout(restoreAfterPrint, 5000);
+            };
         };
 
         // Obtener meses seleccionados del selector
