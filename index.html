@@ -3798,7 +3798,7 @@
                 '.dp{background-color:#3B82F6!important}.dw{background-color:#F59E0B!important}',
                 '.dd{background-color:#374151!important}.ds{background-color:#6B7280!important}',
                 '.extra{font-size:' + fs.extra + ';font-weight:bold;color:#6b7280;line-height:' + fs.dot + '}',
-                '.footer{text-align:center;font-size:7pt;color:#555;margin-top:3mm;flex-shrink:0;font-style:italic}'
+                '.footer{text-align:center;font-size:10pt;color:#555;margin-top:3mm;flex-shrink:0;font-style:italic}'
             ].join('\n');
 
             const legend = [
@@ -3812,9 +3812,8 @@
                 '<div class="legend-item"><span class="ld dd"></span> No Retribuido</div>'
             ].join('');
 
-            // El script de auto-impresión se construye evitando literales de cierre
-            const autoprint = 'window.onload=function(){window.print();window.addEventListener("afterprint",function(){window.close();});};';
-
+            // Construir el HTML de impresión (sin scripts de auto-impresión —
+            // se controla desde el iframe padre para máxima compatibilidad)
             const html = '<!DOCTYPE html>' +
                 '<html lang="es"><head>' +
                 '<meta charset="UTF-8">' +
@@ -3826,17 +3825,62 @@
                 '<div class="legend">' + legend + '</div>' +
                 '<div id="grid">' + monthsHtml + '</div>' +
                 '<p class="footer">&#9432; No olvides que tienes que solicitar el permiso con 15 d&iacute;as h&aacute;biles de antelaci&oacute;n</p>' +
-                '<script>' + autoprint + '<\/script>' +
                 '</body></html>';
 
-            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const pw = window.open(url, '_blank');
-            if (!pw) {
-                showNotification('Permite los popups para esta página y vuelve a intentarlo.', 'error');
-            }
-            // Liberar el objeto URL tras un tiempo prudencial
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
+            // ============================================
+            // MÉTODO DE IMPRESIÓN: IFRAME OCULTO
+            // ============================================
+            // window.open() con Blob URLs está bloqueado en
+            // la mayoría de navegadores móviles (iOS Safari,
+            // Chrome Android). Usar un iframe oculto con
+            // document.write() es la solución más compatible
+            // en todos los navegadores y dispositivos.
+            // ============================================
+
+            // Eliminar iframe de impresión anterior si existe
+            const oldFrame = document.getElementById('print-iframe');
+            if (oldFrame) oldFrame.remove();
+
+            // Crear iframe oculto (position:fixed fuera de vista)
+            const iframe = document.createElement('iframe');
+            iframe.id = 'print-iframe';
+            iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;opacity:0;pointer-events:none;';
+            document.body.appendChild(iframe);
+
+            // Escribir el HTML directamente en el iframe (más compatible que srcdoc)
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write(html);
+            iframeDoc.close();
+
+            // Esperar a que el contenido se renderice antes de imprimir
+            iframe.onload = function() {
+                setTimeout(function() {
+                    try {
+                        iframe.contentWindow.focus();
+                        iframe.contentWindow.print();
+                    } catch(e) {
+                        // Fallback: si el iframe falla (poco probable), intentar con data: URI
+                        console.warn('Error al imprimir desde iframe, intentando fallback:', e);
+                        try {
+                            var dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+                            var pw = window.open(dataUri, '_blank');
+                            if (!pw) {
+                                showNotification('Permite los popups para esta página y vuelve a intentarlo.', 'error');
+                            }
+                        } catch(e2) {
+                            showNotification('No se pudo abrir la vista de impresión. Intenta desde un navegador de escritorio.', 'error');
+                        }
+                    }
+                }, 350);
+            };
+
+            // Limpieza automática del iframe tras un minuto
+            // (el afterprint no es fiable en todos los navegadores sobre iframes)
+            setTimeout(function() {
+                var el = document.getElementById('print-iframe');
+                if (el) el.remove();
+            }, 60000);
         };
 
         // Obtener meses seleccionados del selector
