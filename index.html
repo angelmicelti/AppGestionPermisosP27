@@ -1006,21 +1006,26 @@
 
             <!-- Panel de impresión con selector de meses -->
             <div class="print-panel no-print" id="print-panel">
-                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                <div class="d-flex justify-content-between align-items-center cursor-pointer" data-bs-toggle="collapse" data-bs-target="#print-panel-content" aria-expanded="false" aria-controls="print-panel-content">
                     <div class="d-flex align-items-center gap-2">
                         <i data-lucide="printer" style="width:16px; color:#2563EB"></i>
                         <span class="fw-bold small text-secondary">Imprimir calendario (A3 vertical)</span>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button onclick="window.app.toggleAllPrintMonths(true)" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:0.72rem">Todos</button>
-                        <button onclick="window.app.toggleAllPrintMonths(false)" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:0.72rem">Ninguno</button>
-                    </div>
+                    <i data-lucide="chevron-down" style="width:18px; color:#64748b"></i>
                 </div>
-                <div id="print-month-selector" class="d-flex flex-wrap gap-2 mb-2"></div>
-                <div class="d-flex justify-content-end">
-                    <button onclick="window.app.printCalendar()" id="btn-print-calendar" class="btn btn-primary d-flex align-items-center gap-2 btn-sm">
-                        <i data-lucide="printer" style="width:16px"></i> Imprimir seleccionados
-                    </button>
+                <div id="print-panel-content" class="collapse mt-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <div class="d-flex gap-2">
+                            <button onclick="window.app.toggleAllPrintMonths(true)" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:0.72rem">Todos</button>
+                            <button onclick="window.app.toggleAllPrintMonths(false)" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:0.72rem">Ninguno</button>
+                        </div>
+                    </div>
+                    <div id="print-month-selector" class="d-flex flex-wrap gap-2 mb-2"></div>
+                    <div class="d-flex justify-content-end">
+                        <button onclick="window.app.printCalendar()" id="btn-print-calendar" class="btn btn-primary d-flex align-items-center gap-2 btn-sm">
+                            <i data-lucide="printer" style="width:16px"></i> Imprimir seleccionados
+                        </button>
+                    </div>
                 </div>
             </div>
 
